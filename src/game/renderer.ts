@@ -147,12 +147,17 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
 
     // Sprites
     if (seg.sprite?.active && i > 3) {
-      const fontSize = Math.max(10, Math.min(64, (y2 - y1) * 4));
+      const spriteScale = Math.max(0.15, Math.min(1.2, (y2 - y1) * 0.25));
       const spriteX = cur.screenX + cur.screenW * seg.sprite.offset;
-      ctx.font = `${fontSize}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(seg.sprite.emoji, spriteX, y1);
+      if (seg.sprite.type === 'car') {
+        drawObstacleCar(ctx, spriteX, y1, spriteScale);
+      } else {
+        const fontSize = Math.max(10, Math.min(64, (y2 - y1) * 4));
+        ctx.font = `${fontSize}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(seg.sprite.emoji, spriteX, y1);
+      }
     }
   }
 
