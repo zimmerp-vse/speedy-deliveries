@@ -86,7 +86,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const seg = segments[idx];
 
     const perspective = 1 / n;
-    const screenY = horizon + (H - horizon) * (1 - perspective);
+    const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
     const screenX = W / 2 + x * perspective * W * 0.5 - playerX * perspective * W * 0.8;
 
