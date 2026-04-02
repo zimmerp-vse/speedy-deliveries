@@ -145,14 +145,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
         prev.screenX + prev.screenW * 0.33, y2, lw2);
     }
 
-    // Sprites
-    if (seg.sprite?.active && i > 3) {
-      const spriteScale = Math.max(0.15, Math.min(1.2, (y2 - y1) * 0.25));
+    // Sprites - use distance index (drawDist - i) for proper scaling
+    if (seg.sprite?.active && i > 1) {
+      const distN = lines.length - i; // distance in segments from player
+      const spriteScale = Math.max(0.08, Math.min(0.7, 8 / distN));
       const spriteX = cur.screenX + cur.screenW * seg.sprite.offset;
       if (seg.sprite.type === 'car') {
         drawObstacleCar(ctx, spriteX, y1, spriteScale);
       } else {
-        const fontSize = Math.max(10, Math.min(64, (y2 - y1) * 4));
+        const fontSize = Math.max(8, Math.min(40, 300 / distN));
         ctx.font = `${fontSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
