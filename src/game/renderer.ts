@@ -91,11 +91,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const perspective = 1 / n;
     const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
-    const screenX = W / 2 + x * perspective * W * 0.5 - playerX * perspective * W * 0.8;
+    // playerX shifts the whole road left/right to keep car on road
+    const screenX = W / 2 + (x - playerX * n * 0.12) * perspective * W * 0.3;
 
     lines.push({ screenY, screenX, screenW: roadHalfW, idx });
 
-    dx += seg.curve;
+    dx += seg.curve * 0.5;
+    dx *= 0.98; // dampen to prevent wild curves
     x += dx;
   }
 
