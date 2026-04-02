@@ -39,7 +39,7 @@ export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
   for (let i = playerSegIdx + 15; i < playerSegIdx + 80 && i < segments.length; i++) {
     const seg = segments[i];
     if (seg.sprite) continue;
-    if (Math.random() > 0.025) continue;
+    if (Math.random() > 0.008) continue;
 
     const r = Math.random();
     let type: 'car' | 'obstacle' | 'pedestrian';
