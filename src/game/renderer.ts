@@ -23,8 +23,11 @@ export interface RoadSegment {
 export function createSegments(count: number): RoadSegment[] {
   const segs: RoadSegment[] = [];
   for (let i = 0; i < count; i++) {
+    // First 20 segments are straight, then gentle curves
+    const t = Math.max(0, i - 20);
+    const curve = Math.sin(t * 0.015) * 0.15 + Math.sin(t * 0.04) * 0.08;
     segs.push({
-      curve: Math.sin(i * 0.02) * 0.3 + Math.cos(i * 0.007) * 0.5,
+      curve,
       hill: Math.sin(i * 0.01) * 40,
     });
   }
@@ -36,7 +39,7 @@ export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
   for (let i = playerSegIdx + 15; i < playerSegIdx + 80 && i < segments.length; i++) {
     const seg = segments[i];
     if (seg.sprite) continue;
-    if (Math.random() > 0.025) continue;
+    if (Math.random() > 0.008) continue;
 
     const r = Math.random();
     let type: 'car' | 'obstacle' | 'pedestrian';
@@ -88,11 +91,13 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const perspective = 1 / n;
     const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
-    const screenX = W / 2 + x * perspective * W * 0.5 - playerX * perspective * W * 0.8;
+    // playerX shifts the whole road left/right to keep car on road
+    const screenX = W / 2 + (x - playerX * n * 0.12) * perspective * W * 0.3;
 
     lines.push({ screenY, screenX, screenW: roadHalfW, idx });
 
-    dx += seg.curve;
+    dx += seg.curve * 0.5;
+    dx *= 0.98; // dampen to prevent wild curves
     x += dx;
   }
 
