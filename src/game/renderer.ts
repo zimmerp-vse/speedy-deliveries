@@ -23,8 +23,11 @@ export interface RoadSegment {
 export function createSegments(count: number): RoadSegment[] {
   const segs: RoadSegment[] = [];
   for (let i = 0; i < count; i++) {
+    // First 20 segments are straight, then gentle curves
+    const t = Math.max(0, i - 20);
+    const curve = Math.sin(t * 0.015) * 0.15 + Math.sin(t * 0.04) * 0.08;
     segs.push({
-      curve: Math.sin(i * 0.02) * 0.3 + Math.cos(i * 0.007) * 0.5,
+      curve,
       hill: Math.sin(i * 0.01) * 40,
     });
   }
