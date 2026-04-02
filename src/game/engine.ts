@@ -148,14 +148,15 @@ export class GameEngine {
     const s = this.state;
     if (s.isAccident || s.isDelivery) return;
     
-    for (let i = 0; i <= 2; i++) {
+    for (let i = 0; i <= 3; i++) {
       const idx = (playerSegIdx + i) % s.segments.length;
       const seg = s.segments[idx];
       if (!seg.sprite || !seg.sprite.active) continue;
       
-      const lateralDist = Math.abs(s.playerX - seg.sprite.offset * 3);
+      // offset is in range [-0.7, 0.7], playerX in [-3, 3], so scale offset to match
+      const lateralDist = Math.abs(s.playerX - seg.sprite.offset * 4.2);
       
-      if (lateralDist < 0.7 && s.speed > 10) {
+      if (lateralDist < 0.8 && s.speed > 10) {
         if (seg.sprite.type === 'pedestrian' && s.hornActive) {
           seg.sprite.active = false;
           continue;

@@ -145,14 +145,15 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
         prev.screenX + prev.screenW * 0.33, y2, lw2);
     }
 
-    // Sprites
-    if (seg.sprite?.active && i > 3) {
-      const spriteScale = Math.max(0.15, Math.min(1.2, (y2 - y1) * 0.25));
+    // Sprites - use distance index (drawDist - i) for proper scaling
+    if (seg.sprite?.active && i > 1) {
+      const distN = lines.length - i; // distance in segments from player
+      const spriteScale = Math.max(0.08, Math.min(0.7, 8 / distN));
       const spriteX = cur.screenX + cur.screenW * seg.sprite.offset;
       if (seg.sprite.type === 'car') {
         drawObstacleCar(ctx, spriteX, y1, spriteScale);
       } else {
-        const fontSize = Math.max(10, Math.min(64, (y2 - y1) * 4));
+        const fontSize = Math.max(8, Math.min(40, 300 / distN));
         ctx.font = `${fontSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -195,50 +196,59 @@ function drawTrap(
 }
 
 function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
-  // Car facing sideways (side profile) parked on road
-  const w = 60 * scale, h = 28 * scale;
-  const bx = x - w / 2, by = y - h;
+  // Rear view of car driving ahead (same direction as player)
+  const w = 50 * scale, h = 35 * scale;
+  const cx = x, cy = y;
 
   // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.ellipse(x, y, w * 0.45, 4 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 2 * scale, w * 0.45, 3 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Body
-  const colors = ['#3b82f6', '#eab308', '#10b981', '#f97316', '#a855f7'];
-  const color = colors[Math.floor(Math.abs(x * 7)) % colors.length];
+  // Pick color based on position
+  const colors = ['#3b82f6', '#eab308', '#10b981', '#f97316', '#a855f7', '#ef4444'];
+  const color = colors[Math.floor(Math.abs(x * 7 + y * 3)) % colors.length];
+
+  // Lower body
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.roundRect(bx, by, w, h * 0.6, [3 * scale, 3 * scale, 2 * scale, 2 * scale]);
+  ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.5, [2 * scale, 2 * scale, 4 * scale, 4 * scale]);
   ctx.fill();
 
-  // Roof / cabin
-  ctx.fillStyle = shadeColor(color, -30);
+  // Upper cabin
+  ctx.fillStyle = shadeColor(color, -25);
   ctx.beginPath();
-  ctx.roundRect(bx + w * 0.2, by - h * 0.35, w * 0.55, h * 0.4, [3 * scale, 3 * scale, 0, 0]);
+  ctx.roundRect(cx - w * 0.35, cy - h, w * 0.7, h * 0.55, [4 * scale, 4 * scale, 0, 0]);
   ctx.fill();
 
-  // Windows
-  ctx.fillStyle = 'rgba(135,206,235,0.8)';
-  ctx.fillRect(bx + w * 0.24, by - h * 0.28, w * 0.22, h * 0.28);
-  ctx.fillRect(bx + w * 0.5, by - h * 0.28, w * 0.22, h * 0.28);
+  // Rear window
+  ctx.fillStyle = 'rgba(135,206,235,0.7)';
+  ctx.beginPath();
+  ctx.roundRect(cx - w * 0.28, cy - h + 3 * scale, w * 0.56, h * 0.35, [3 * scale, 3 * scale, 0, 0]);
+  ctx.fill();
 
-  // Wheels
+  // Tail lights
+  ctx.fillStyle = '#ff2222';
+  ctx.shadowColor = '#ff0000';
+  ctx.shadowBlur = 4 * scale;
+  ctx.beginPath();
+  ctx.roundRect(cx - w / 2 + 2 * scale, cy - h * 0.15, 6 * scale, 4 * scale, scale);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(cx + w / 2 - 8 * scale, cy - h * 0.15, 6 * scale, 4 * scale, scale);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Wheels (visible at bottom sides)
   ctx.fillStyle = '#111';
+  ctx.fillRect(cx - w / 2 - 2 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
+  ctx.fillRect(cx + w / 2 - 3 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
+
+  // License plate
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.arc(bx + w * 0.22, y - 2 * scale, 5 * scale, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(bx + w * 0.78, y - 2 * scale, 5 * scale, 0, Math.PI * 2);
-  ctx.fill();
-  // Hubcaps
-  ctx.fillStyle = '#666';
-  ctx.beginPath();
-  ctx.arc(bx + w * 0.22, y - 2 * scale, 2.5 * scale, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(bx + w * 0.78, y - 2 * scale, 2.5 * scale, 0, Math.PI * 2);
+  ctx.roundRect(cx - 6 * scale, cy - 3 * scale, 12 * scale, 4 * scale, scale);
   ctx.fill();
 }
 
