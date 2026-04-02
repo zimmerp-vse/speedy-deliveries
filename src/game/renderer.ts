@@ -194,61 +194,230 @@ function drawTrap(
   ctx.fill();
 }
 
-function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
-  const cx = W / 2 + state.steering * 30;
-  const cy = H - 12;
-  const cw = 70, ch = 48;
+function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
+  // Car facing sideways (side profile) parked on road
+  const w = 60 * scale, h = 28 * scale;
+  const bx = x - w / 2, by = y - h;
 
   // Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy, cw * 0.5, 6, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y, w * 0.45, 4 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Body
-  const g = ctx.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
-  g.addColorStop(0, '#ff4444');
-  g.addColorStop(0.5, '#cc0000');
-  g.addColorStop(1, '#880000');
-  ctx.fillStyle = g;
+  const colors = ['#3b82f6', '#eab308', '#10b981', '#f97316', '#a855f7'];
+  const color = colors[Math.floor(Math.abs(x * 7)) % colors.length];
+  ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.roundRect(cx - cw / 2, cy - ch, cw, ch * 0.65, [8, 8, 3, 3]);
+  ctx.roundRect(bx, by, w, h * 0.6, [3 * scale, 3 * scale, 2 * scale, 2 * scale]);
   ctx.fill();
 
-  // Roof
-  ctx.fillStyle = '#aa0000';
+  // Roof / cabin
+  ctx.fillStyle = shadeColor(color, -30);
   ctx.beginPath();
-  ctx.roundRect(cx - cw * 0.28, cy - ch - 12, cw * 0.56, 15, [5, 5, 0, 0]);
+  ctx.roundRect(bx + w * 0.2, by - h * 0.35, w * 0.55, h * 0.4, [3 * scale, 3 * scale, 0, 0]);
   ctx.fill();
 
-  // Windshield
-  ctx.fillStyle = 'rgba(135,206,235,0.85)';
-  ctx.fillRect(cx - cw * 0.22, cy - ch - 9, cw * 0.44, 11);
+  // Windows
+  ctx.fillStyle = 'rgba(135,206,235,0.8)';
+  ctx.fillRect(bx + w * 0.24, by - h * 0.28, w * 0.22, h * 0.28);
+  ctx.fillRect(bx + w * 0.5, by - h * 0.28, w * 0.22, h * 0.28);
 
   // Wheels
   ctx.fillStyle = '#111';
-  for (const [wx, wy] of [
-    [cx - cw / 2 - 3, cy - ch + 3],
-    [cx + cw / 2 - 5, cy - ch + 3],
-    [cx - cw / 2 - 3, cy - 16],
-    [cx + cw / 2 - 5, cy - 16],
-  ]) {
-    ctx.fillRect(wx, wy, 8, 15);
-  }
+  ctx.beginPath();
+  ctx.arc(bx + w * 0.22, y - 2 * scale, 5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(bx + w * 0.78, y - 2 * scale, 5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // Hubcaps
+  ctx.fillStyle = '#666';
+  ctx.beginPath();
+  ctx.arc(bx + w * 0.22, y - 2 * scale, 2.5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(bx + w * 0.78, y - 2 * scale, 2.5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+}
 
-  // Tail lights
+function shadeColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + percent));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
+  const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+  return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+}
+
+function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
+  const cx = W / 2 + state.steering * 30;
+  const cy = H - 8;
+  const cw = 90, ch = 60;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 2, cw * 0.52, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Rear body (trunk area) ---
+  const bodyG = ctx.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
+  bodyG.addColorStop(0, '#ff3333');
+  bodyG.addColorStop(0.3, '#ee1111');
+  bodyG.addColorStop(0.7, '#cc0000');
+  bodyG.addColorStop(1, '#880000');
+  ctx.fillStyle = bodyG;
+  ctx.beginPath();
+  ctx.roundRect(cx - cw / 2, cy - ch * 0.55, cw, ch * 0.55, [4, 4, 6, 6]);
+  ctx.fill();
+
+  // Body highlight stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(cx - cw / 2 + 4, cy - ch * 0.5, cw - 8, 3);
+
+  // --- Upper body / cabin ---
+  ctx.fillStyle = '#bb0000';
+  ctx.beginPath();
+  ctx.roundRect(cx - cw * 0.35, cy - ch, cw * 0.7, ch * 0.5, [6, 6, 0, 0]);
+  ctx.fill();
+
+  // Windshield
+  const wsG = ctx.createLinearGradient(0, cy - ch, 0, cy - ch * 0.55);
+  wsG.addColorStop(0, 'rgba(180,220,255,0.9)');
+  wsG.addColorStop(1, 'rgba(100,160,220,0.7)');
+  ctx.fillStyle = wsG;
+  ctx.beginPath();
+  ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
+  ctx.fill();
+
+  // Windshield frame
+  ctx.strokeStyle = '#990000';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
+  ctx.stroke();
+
+  // --- Two passengers ---
+  // Man (left, brown hair)
+  drawPassenger(ctx, cx - 10, cy - ch + 2, 'man', state.isAccident);
+  // Woman (right, blonde hair)
+  drawPassenger(ctx, cx + 10, cy - ch + 2, 'woman', state.isAccident);
+
+  // --- Side mirrors ---
+  ctx.fillStyle = '#cc0000';
+  // Left mirror
+  ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.35, cy - ch * 0.7);
+  ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.65);
+  ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.55);
+  ctx.lineTo(cx - cw * 0.35, cy - ch * 0.55);
+  ctx.fill();
+  // Right mirror
+  ctx.beginPath();
+  ctx.moveTo(cx + cw * 0.35, cy - ch * 0.7);
+  ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.65);
+  ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.55);
+  ctx.lineTo(cx + cw * 0.35, cy - ch * 0.55);
+  ctx.fill();
+  // Mirror glass
+  ctx.fillStyle = 'rgba(135,206,235,0.6)';
+  ctx.fillRect(cx - cw * 0.35 - 9, cy - ch * 0.64, 8, 8);
+  ctx.fillRect(cx + cw * 0.35 + 2, cy - ch * 0.64, 8, 8);
+
+  // --- Wheels ---
+  ctx.fillStyle = '#111';
+  const wheelW = 10, wheelH = 16;
+  // Left wheels
+  ctx.fillRect(cx - cw / 2 - 4, cy - ch * 0.48, wheelW, wheelH);
+  ctx.fillRect(cx - cw / 2 - 4, cy - 14, wheelW, wheelH);
+  // Right wheels
+  ctx.fillRect(cx + cw / 2 - 6, cy - ch * 0.48, wheelW, wheelH);
+  ctx.fillRect(cx + cw / 2 - 6, cy - 14, wheelW, wheelH);
+  // Tire shine
+  ctx.fillStyle = '#333';
+  ctx.fillRect(cx - cw / 2 - 2, cy - ch * 0.45, 6, 3);
+  ctx.fillRect(cx + cw / 2 - 4, cy - ch * 0.45, 6, 3);
+
+  // --- Tail lights ---
   const braking = state.speed < 5;
-  ctx.fillStyle = braking ? '#ff0000' : '#ff6666';
-  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 8; }
-  ctx.fillRect(cx - cw / 2 + 4, cy - 7, 7, 4);
-  ctx.fillRect(cx + cw / 2 - 11, cy - 7, 7, 4);
+  ctx.fillStyle = braking ? '#ff0000' : '#cc3333';
+  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 12; }
+  ctx.beginPath();
+  ctx.roundRect(cx - cw / 2 + 4, cy - 8, 10, 5, 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(cx + cw / 2 - 14, cy - 8, 10, 5, 2);
+  ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Passenger
-  ctx.font = '15px serif';
+  // Turn signal (orange)
+  ctx.fillStyle = '#ff8800';
+  ctx.fillRect(cx - cw / 2 + 4, cy - 14, 6, 3);
+  ctx.fillRect(cx + cw / 2 - 10, cy - 14, 6, 3);
+
+  // --- License plate ---
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(cx - 12, cy - 5, 24, 8, 2);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.font = 'bold 5px monospace';
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(state.isAccident ? '😤' : '😎', cx + 12, cy - ch - 13);
+  ctx.textBaseline = 'middle';
+  ctx.fillText('OUT-RUN', cx, cy - 1);
+
+  // --- Rear badge ---
+  ctx.fillStyle = '#ddd';
+  ctx.font = '4px sans-serif';
+  ctx.fillText('TURBO', cx, cy - 18);
+}
+
+function drawPassenger(ctx: CanvasRenderingContext2D, x: number, y: number, type: 'man' | 'woman', isAccident: boolean) {
+  // Head
+  ctx.fillStyle = '#fcd5a0';
+  ctx.beginPath();
+  ctx.arc(x, y - 4, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hair
+  if (type === 'man') {
+    ctx.fillStyle = '#6b3e1f';
+    ctx.beginPath();
+    ctx.arc(x, y - 7, 6, Math.PI, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillRect(x - 5, y - 9, 10, 4);
+  } else {
+    ctx.fillStyle = '#f0c040';
+    ctx.beginPath();
+    ctx.arc(x, y - 7, 6.5, Math.PI, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillRect(x - 6, y - 9, 12, 4);
+    // Flowing hair sides
+    ctx.fillRect(x - 7, y - 7, 3, 10);
+    ctx.fillRect(x + 4, y - 7, 3, 10);
+  }
+
+  // Expression
+  ctx.fillStyle = '#333';
+  ctx.font = '8px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (isAccident) {
+    // Angry/scared eyes
+    ctx.fillText('>', x - 3, y - 4);
+    ctx.fillText('<', x + 3, y - 4);
+    ctx.fillStyle = '#c00';
+    ctx.fillText(type === 'man' ? '😤' : '😱', x, y + 6);
+  } else {
+    // Cool sunglasses
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x - 5, y - 6, 4, 3);
+    ctx.fillRect(x + 1, y - 6, 4, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(x - 4, y - 6, 2, 1);
+    ctx.fillRect(x + 2, y - 6, 2, 1);
+  }
 }
 
 function drawBar(ctx: CanvasRenderingContext2D, state: GameState, W: number) {
