@@ -5,11 +5,15 @@ export const GAME_CONFIG = {
   tripDurationMs: 20000, // 20 seconds per trip
   
   // Speed settings
-  maxSpeed: 180,
-  acceleration: 45,
-  braking: 90,
-  deceleration: 20,
-  steeringSpeed: 5.0,
+  maxSpeed: 150,
+  cruiseSpeed: 72,
+  launchAcceleration: 52,
+  acceleration: 24,
+  braking: 110,
+  coastDeceleration: 6,
+  idleDeceleration: 18,
+  stopSpeedThreshold: 8,
+  steeringSpeed: 5.2,
   
   // Road settings
   roadWidth: 2000,
@@ -17,10 +21,10 @@ export const GAME_CONFIG = {
   drawDistance: 150,
   laneCount: 3,
   
-  // Obstacle spawn rates (per second)
-  carSpawnRate: 0.8,
-  obstacleSpawnRate: 0.3,
-  pedestrianSpawnRate: 0.2,
+  // Obstacle spawn chances per advanced road segment
+  carSpawnRate: 0.014,
+  obstacleSpawnRate: 0.007,
+  pedestrianSpawnRate: 0.005,
   
   // Financial
   deliveryReward: 500,

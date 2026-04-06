@@ -36,25 +36,45 @@ export function createSegments(count: number): RoadSegment[] {
 
 export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
   const cfg = GAME_CONFIG;
-  for (let i = playerSegIdx + 15; i < playerSegIdx + 80 && i < segments.length; i++) {
-    const seg = segments[i];
-    if (seg.sprite) continue;
-    if (Math.random() > 0.008) continue;
+  const totalSpawnChance = cfg.carSpawnRate + cfg.obstacleSpawnRate + cfg.pedestrianSpawnRate;
+  if (Math.random() >= totalSpawnChance) return;
 
-    const r = Math.random();
-    let type: 'car' | 'obstacle' | 'pedestrian';
-    let emojis: string[];
-    if (r < 0.5) { type = 'car'; emojis = cfg.obstacles.cars; }
-    else if (r < 0.8) { type = 'obstacle'; emojis = cfg.obstacles.roadObstacles; }
-    else { type = 'pedestrian'; emojis = cfg.obstacles.pedestrians; }
+  const spawnStart = Math.min(segments.length - 1, playerSegIdx + 28);
+  const spawnEnd = Math.min(segments.length - 1, playerSegIdx + 72);
+  if (spawnStart >= spawnEnd) return;
 
-    seg.sprite = {
-      type,
-      emoji: emojis[Math.floor(Math.random() * emojis.length)],
-      offset: (Math.random() - 0.5) * 1.4,
-      active: true,
-    };
+  const spawnIdx = spawnStart + Math.floor(Math.random() * (spawnEnd - spawnStart + 1));
+  const seg = segments[spawnIdx];
+  if (seg.sprite) return;
+
+  for (let i = Math.max(0, spawnIdx - 10); i <= Math.min(segments.length - 1, spawnIdx + 10); i++) {
+    if (i !== spawnIdx && segments[i].sprite?.active) return;
   }
+
+  const r = Math.random() * totalSpawnChance;
+  let type: 'car' | 'obstacle' | 'pedestrian';
+  let emojis: string[];
+
+  if (r < cfg.carSpawnRate) {
+    type = 'car';
+    emojis = cfg.obstacles.cars;
+  } else if (r < cfg.carSpawnRate + cfg.obstacleSpawnRate) {
+    type = 'obstacle';
+    emojis = cfg.obstacles.roadObstacles;
+  } else {
+    type = 'pedestrian';
+    emojis = cfg.obstacles.pedestrians;
+  }
+
+  const laneOffsets = [-0.58, 0, 0.58];
+  const laneCenter = laneOffsets[Math.floor(Math.random() * laneOffsets.length)];
+
+  seg.sprite = {
+    type,
+    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+    offset: laneCenter + (Math.random() - 0.5) * 0.06,
+    active: true,
+  };
 }
 
 export function render(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
@@ -146,14 +166,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     // Sprites should use the near edge of the segment so they visually reach the player
     if (seg.sprite?.active) {
       const distN = i;
-      const spriteScale = Math.max(0.14, Math.min(1.05, 2.2 / (distN + 1)));
+      const spriteScale = Math.max(0.22, Math.min(1.6, 3.4 / (distN + 1.15)));
       const spriteX = prev.screenX + prev.screenW * seg.sprite.offset;
       const spriteY = Math.min(H - 18, prev.screenY);
 
       if (seg.sprite.type === 'car') {
         drawObstacleCar(ctx, spriteX, spriteY, spriteScale);
       } else {
-        const fontSize = Math.max(12, Math.min(54, 52 * spriteScale));
+        const fontSize = Math.max(16, Math.min(88, 58 * spriteScale));
         ctx.font = `${fontSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -197,7 +217,7 @@ function drawTrap(
 
 function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
   // Rear view of car driving ahead (same direction as player)
-  const w = 50 * scale, h = 35 * scale;
+  const w = 58 * scale, h = 42 * scale;
   const cx = x, cy = y;
 
   // Shadow
