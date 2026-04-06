@@ -105,8 +105,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   for (let i = lines.length - 1; i > 0; i--) {
     const cur = lines[i];
     const prev = lines[i - 1];
-    const seg = segments[cur.idx];
-    const dark = (Math.floor(cur.idx / 2)) % 2 === 0;
+    const seg = segments[prev.idx];
+    const dark = Math.floor(cur.idx / 3) % 2 === 0;
 
     const y1 = cur.screenY;
     const y2 = prev.screenY;
@@ -117,47 +117,47 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     ctx.fillRect(0, y1, W, y2 - y1 + 1);
 
     // Rumble strips
-    const rumbleC = dark ? '#dd1111' : '#dddddd';
+    const rumbleC = dark ? '#d61d1d' : '#f0e6e6';
     drawTrap(ctx, rumbleC,
       cur.screenX, y1, cur.screenW * 1.2,
       prev.screenX, y2, prev.screenW * 1.2);
 
     // Road surface
-    const roadC = dark ? '#4a4a4a' : '#5a5a5a';
+    const roadC = dark ? '#545454' : '#5e5e5e';
     drawTrap(ctx, roadC,
       cur.screenX, y1, cur.screenW,
       prev.screenX, y2, prev.screenW);
 
-    // Lane markings (only on light segments)
-    if (!dark) {
-      const lw1 = cur.screenW * 0.015, lw2 = prev.screenW * 0.015;
-      // Center
-      drawTrap(ctx, '#fff',
-        cur.screenX, y1, lw1,
-        prev.screenX, y2, lw2);
-      // Left lane
-      drawTrap(ctx, '#fff',
-        cur.screenX - cur.screenW * 0.33, y1, lw1,
-        prev.screenX - prev.screenW * 0.33, y2, lw2);
-      // Right lane
-      drawTrap(ctx, '#fff',
-        cur.screenX + cur.screenW * 0.33, y1, lw1,
-        prev.screenX + prev.screenW * 0.33, y2, lw2);
+    // Two dashed lane dividers for a 3-lane road
+    if (Math.floor(cur.idx / 3) % 2 === 0) {
+      const lw1 = Math.max(2, cur.screenW * 0.018);
+      const lw2 = Math.max(2, prev.screenW * 0.018);
+      const lane1Cur = cur.screenW * 0.33;
+      const lane1Prev = prev.screenW * 0.33;
+
+      drawTrap(ctx, '#f8f8f0',
+        cur.screenX - lane1Cur, y1, lw1,
+        prev.screenX - lane1Prev, y2, lw2);
+      drawTrap(ctx, '#f8f8f0',
+        cur.screenX + lane1Cur, y1, lw1,
+        prev.screenX + lane1Prev, y2, lw2);
     }
 
-    // Sprites - use distance index (drawDist - i) for proper scaling
-    if (seg.sprite?.active && i > 1) {
-      const distN = lines.length - i; // distance in segments from player
-      const spriteScale = Math.max(0.08, Math.min(0.7, 8 / distN));
-      const spriteX = cur.screenX + cur.screenW * seg.sprite.offset;
+    // Sprites should use the near edge of the segment so they visually reach the player
+    if (seg.sprite?.active) {
+      const distN = i;
+      const spriteScale = Math.max(0.14, Math.min(1.05, 2.2 / (distN + 1)));
+      const spriteX = prev.screenX + prev.screenW * seg.sprite.offset;
+      const spriteY = Math.min(H - 18, prev.screenY);
+
       if (seg.sprite.type === 'car') {
-        drawObstacleCar(ctx, spriteX, y1, spriteScale);
+        drawObstacleCar(ctx, spriteX, spriteY, spriteScale);
       } else {
-        const fontSize = Math.max(8, Math.min(40, 300 / distN));
+        const fontSize = Math.max(12, Math.min(54, 52 * spriteScale));
         ctx.font = `${fontSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(seg.sprite.emoji, spriteX, y1);
+        ctx.fillText(seg.sprite.emoji, spriteX, spriteY);
       }
     }
   }
