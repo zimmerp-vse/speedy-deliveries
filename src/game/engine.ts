@@ -148,15 +148,22 @@ export class GameEngine {
     const s = this.state;
     if (s.isAccident || s.isDelivery) return;
     
-    for (let i = 0; i <= 3; i++) {
+    const fractional = s.position - Math.floor(s.position);
+    
+    // Only check the segment the player is currently on and the next one
+    for (let i = 0; i <= 1; i++) {
       const idx = (playerSegIdx + i) % s.segments.length;
       const seg = s.segments[idx];
       if (!seg.sprite || !seg.sprite.active) continue;
       
-      // offset is in range [-0.7, 0.7], playerX in [-3, 3], so scale offset to match
+      // Longitudinal proximity: segment must be within ~1 segment of player
+      const segDist = i - fractional;
+      if (segDist > 0.8 || segDist < -0.3) continue;
+      
+      // Lateral check: offset [-0.7, 0.7] maps to playerX [-3, 3]
       const lateralDist = Math.abs(s.playerX - seg.sprite.offset * 4.2);
       
-      if (lateralDist < 0.8 && s.speed > 10) {
+      if (lateralDist < 1.0 && s.speed > 10) {
         if (seg.sprite.type === 'pedestrian' && s.hornActive) {
           seg.sprite.active = false;
           continue;
