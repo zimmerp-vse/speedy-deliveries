@@ -17,6 +17,8 @@ export class GameEngine {
   private lastTime: number = 0;
   private animFrame: number = 0;
   private running: boolean = false;
+  private cruiseEnabled: boolean = false;
+  private lastSpawnSegment: number = 0;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -66,6 +68,8 @@ export class GameEngine {
     this.currentRound++;
     this.state = this.createInitialState(this.currentRound - 1);
     this.roundStartTime = performance.now();
+    this.cruiseEnabled = false;
+    this.lastSpawnSegment = 0;
     this.running = true;
     this.lastTime = performance.now();
     this.loop();
@@ -96,11 +100,22 @@ export class GameEngine {
     
     // Speed
     if (this.controls.accelerate) {
-      s.speed = Math.min(s.speed + cfg.acceleration * dt, cfg.maxSpeed);
+      this.cruiseEnabled = true;
+      const accelRate = s.speed < cfg.cruiseSpeed ? cfg.launchAcceleration : cfg.acceleration;
+      s.speed = Math.min(s.speed + accelRate * dt, cfg.maxSpeed);
     } else if (this.controls.brake) {
       s.speed = Math.max(s.speed - cfg.braking * dt, 0);
+      if (s.speed <= cfg.stopSpeedThreshold) {
+        this.cruiseEnabled = false;
+      }
+    } else if (this.cruiseEnabled) {
+      if (s.speed > cfg.cruiseSpeed) {
+        s.speed = Math.max(s.speed - cfg.coastDeceleration * dt, cfg.cruiseSpeed);
+      } else {
+        s.speed = Math.min(s.speed + cfg.coastDeceleration * 0.5 * dt, cfg.cruiseSpeed);
+      }
     } else {
-      s.speed = Math.max(s.speed - cfg.deceleration * dt, 0);
+      s.speed = Math.max(s.speed - cfg.idleDeceleration * dt, 0);
     }
     
     // Steering - car stays wherever you steer it
@@ -132,7 +147,10 @@ export class GameEngine {
     
     // Spawn
     const playerSegIdx = Math.floor(s.position) % s.segments.length;
-    spawnObstacles(s.segments, playerSegIdx);
+    if (playerSegIdx !== this.lastSpawnSegment) {
+      spawnObstacles(s.segments, playerSegIdx);
+      this.lastSpawnSegment = playerSegIdx;
+    }
     
     // Collisions
     this.checkCollisions(playerSegIdx);
