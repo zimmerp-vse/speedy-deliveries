@@ -146,35 +146,28 @@ export class GameEngine {
 
   private checkCollisions(playerSegIdx: number) {
     const s = this.state;
-    if (s.isAccident || s.isDelivery) return;
-    
-    const fractional = s.position - Math.floor(s.position);
-    
-    // Only check the segment the player is currently on and the next one
-    for (let i = 0; i <= 1; i++) {
-      const idx = (playerSegIdx + i) % s.segments.length;
-      const seg = s.segments[idx];
-      if (!seg.sprite || !seg.sprite.active) continue;
-      
-      // Longitudinal proximity: segment must be within ~1 segment of player
-      const segDist = i - fractional;
-      if (segDist > 0.8 || segDist < -0.3) continue;
-      
-      // Lateral check: offset [-0.7, 0.7] maps to playerX [-3, 3]
-      const lateralDist = Math.abs(s.playerX - seg.sprite.offset * 4.2);
-      
-      if (lateralDist < 1.0 && s.speed > 10) {
-        if (seg.sprite.type === 'pedestrian' && s.hornActive) {
-          seg.sprite.active = false;
-          continue;
-        }
-        seg.sprite.active = false;
-        s.isAccident = true;
-        s.speed = 0;
-        this.endRound(false, seg.sprite.type);
-        return;
-      }
+    if (s.isAccident || s.isDelivery || s.speed <= 10) return;
+
+    const approach = s.position - Math.floor(s.position);
+    if (approach < 0.72) return;
+
+    const nextIdx = (playerSegIdx + 1) % s.segments.length;
+    const seg = s.segments[nextIdx];
+    if (!seg.sprite || !seg.sprite.active) return;
+
+    const obstacleX = seg.sprite.offset * 4.2;
+    const lateralDist = Math.abs(s.playerX - obstacleX);
+    if (lateralDist > 0.65) return;
+
+    if (seg.sprite.type === 'pedestrian' && s.hornActive) {
+      seg.sprite.active = false;
+      return;
     }
+
+    seg.sprite.active = false;
+    s.isAccident = true;
+    s.speed = 0;
+    this.endRound(false, seg.sprite.type);
   }
 
   private endRound(success: boolean, accidentType?: AccidentType) {
