@@ -5,11 +5,11 @@ export const GAME_CONFIG = {
   tripDurationMs: 20000, // 20 seconds per trip
   
   // Speed settings
-  maxSpeed: 200,
-  acceleration: 120,
-  braking: 200,
-  deceleration: 60,
-  steeringSpeed: 3.0,
+  maxSpeed: 180,
+  acceleration: 45,
+  braking: 90,
+  deceleration: 20,
+  steeringSpeed: 5.0,
   
   // Road settings
   roadWidth: 2000,
