@@ -103,20 +103,24 @@ export class GameEngine {
       s.speed = Math.max(s.speed - cfg.deceleration * dt, 0);
     }
     
-    // Steering
+    // Steering - car stays wherever you steer it
     const steerDir = (this.controls.left ? -1 : 0) + (this.controls.right ? 1 : 0);
     s.steering = steerDir;
     
     if (s.speed > 0) {
-      s.playerX += steerDir * cfg.steeringSpeed * dt * (s.speed / cfg.maxSpeed);
-      s.playerX = Math.max(-3, Math.min(3, s.playerX));
+      // Steering scales with speed but keeps a minimum responsiveness
+      const steerMul = 0.4 + 0.6 * (s.speed / cfg.maxSpeed);
+      s.playerX += steerDir * cfg.steeringSpeed * dt * steerMul;
       
-      // Road curve pushes player
+      // Road curve gently pushes player (centrifugal effect)
       const segIdx = Math.floor(s.position) % s.segments.length;
       const seg = s.segments[segIdx];
       if (seg) {
-        s.playerX += seg.curve * dt * (s.speed / cfg.maxSpeed) * 0.5;
+        s.playerX += seg.curve * dt * (s.speed / cfg.maxSpeed) * 0.3;
       }
+      
+      // Clamp to road edges (wider range = all 3 lanes)
+      s.playerX = Math.max(-2.5, Math.min(2.5, s.playerX));
     }
     
     s.hornActive = this.controls.horn;
