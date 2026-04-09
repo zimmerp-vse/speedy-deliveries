@@ -128,24 +128,24 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const seg = segments[prev.idx];
     const dark = Math.floor(cur.idx / 3) % 2 === 0;
 
-    const y1 = cur.screenY;
-    const y2 = prev.screenY;
+    const y1 = Math.floor(cur.screenY);
+    const y2 = Math.ceil(prev.screenY);
     if (y2 <= y1) continue;
 
-    // Grass (alternating) — overlap by 1px to avoid seams
+    // Grass (alternating)
     ctx.fillStyle = dark ? '#1a7a08' : '#23991a';
-    ctx.fillRect(0, y1 - 0.5, W, y2 - y1 + 2);
+    ctx.fillRect(0, y1, W, y2 - y1 + 1);
 
     // Rumble strips (alternating)
     const rumbleC = dark ? '#d61d1d' : '#f0e6e6';
     drawTrap(ctx, rumbleC,
       cur.screenX, y1, cur.screenW * 1.2,
-      prev.screenX, y2, prev.screenW * 1.2);
+      prev.screenX, y2 + 1, prev.screenW * 1.2);
 
-    // Road surface - uniform color, no alternating
+    // Road surface - uniform color, slightly overlapped to hide segment seams
     drawTrap(ctx, '#555555',
-      cur.screenX, y1, cur.screenW,
-      prev.screenX, y2, prev.screenW);
+      cur.screenX, y1 - 1, cur.screenW,
+      prev.screenX, y2 + 1, prev.screenW);
 
     // Dashed lane dividers (only draw every other group of 3 segments)
     if (dark) {
