@@ -132,33 +132,32 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const y2 = prev.screenY;
     if (y2 <= y1) continue;
 
-    // Grass
+    // Grass (alternating)
     ctx.fillStyle = dark ? '#1a7a08' : '#23991a';
     ctx.fillRect(0, y1, W, y2 - y1 + 1);
 
-    // Rumble strips
+    // Rumble strips (alternating)
     const rumbleC = dark ? '#d61d1d' : '#f0e6e6';
     drawTrap(ctx, rumbleC,
       cur.screenX, y1, cur.screenW * 1.2,
       prev.screenX, y2, prev.screenW * 1.2);
 
-    // Road surface
-    const roadC = dark ? '#545454' : '#5e5e5e';
-    drawTrap(ctx, roadC,
+    // Road surface - uniform color, no alternating
+    drawTrap(ctx, '#555555',
       cur.screenX, y1, cur.screenW,
       prev.screenX, y2, prev.screenW);
 
-    // Two dashed lane dividers for a 3-lane road
-    if (Math.floor(cur.idx / 3) % 2 === 0) {
-      const lw1 = Math.max(2, cur.screenW * 0.018);
-      const lw2 = Math.max(2, prev.screenW * 0.018);
+    // Dashed lane dividers (only draw every other group of 3 segments)
+    if (dark) {
+      const lw1 = Math.max(2, cur.screenW * 0.015);
+      const lw2 = Math.max(2, prev.screenW * 0.015);
       const lane1Cur = cur.screenW * 0.33;
       const lane1Prev = prev.screenW * 0.33;
 
-      drawTrap(ctx, '#f8f8f0',
+      drawTrap(ctx, '#e8e8e0',
         cur.screenX - lane1Cur, y1, lw1,
         prev.screenX - lane1Prev, y2, lw2);
-      drawTrap(ctx, '#f8f8f0',
+      drawTrap(ctx, '#e8e8e0',
         cur.screenX + lane1Cur, y1, lw1,
         prev.screenX + lane1Prev, y2, lw2);
     }
