@@ -132,9 +132,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const y2 = prev.screenY;
     if (y2 <= y1) continue;
 
-    // Grass (alternating)
+    // Grass (alternating) — overlap by 1px to avoid seams
     ctx.fillStyle = dark ? '#1a7a08' : '#23991a';
-    ctx.fillRect(0, y1, W, y2 - y1 + 1);
+    ctx.fillRect(0, y1 - 0.5, W, y2 - y1 + 2);
 
     // Rumble strips (alternating)
     const rumbleC = dark ? '#d61d1d' : '#f0e6e6';
