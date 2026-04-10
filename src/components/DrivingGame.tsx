@@ -16,6 +16,7 @@ export function DrivingGame() {
   const [speed, setSpeed] = useState(0);
   const [money, setMoney] = useState(GAME_CONFIG.startingMoney);
   const [currentRound, setCurrentRound] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.tripDurationMs / 1000);
   const [lastResult, setLastResult] = useState<RoundResult | null>(null);
   const [gameData, setGameData] = useState<GameData | null>(null);
 
@@ -35,6 +36,7 @@ export function DrivingGame() {
     
     engine.onSpeedUpdate = setSpeed;
     engine.onMoneyUpdate = setMoney;
+    engine.onTimeUpdate = setTimeRemaining;
     engine.onRoundEnd = (result, data) => {
       setLastResult(result);
       setGameData({ ...data });
@@ -118,6 +120,7 @@ export function DrivingGame() {
             money={money}
             round={currentRound}
             totalRounds={GAME_CONFIG.totalRounds}
+            timeRemaining={timeRemaining}
           />
           <GameControls onControl={handleControl} />
         </>

@@ -28,6 +28,7 @@ export class GameEngine {
   public onGameEnd?: (gameData: GameData) => void;
   public onSpeedUpdate?: (speed: number) => void;
   public onMoneyUpdate?: (money: number) => void;
+  public onTimeUpdate?: (time: number) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -57,6 +58,7 @@ export class GameEngine {
       isAccident: false,
       isDelivery: false,
       hornActive: false,
+      timeRemaining: GAME_CONFIG.tripDurationMs / 1000,
     };
   }
 
@@ -140,6 +142,17 @@ export class GameEngine {
     
     s.hornActive = this.controls.horn;
     
+    // Timer
+    const elapsed = (performance.now() - this.roundStartTime) / 1000;
+    s.timeRemaining = Math.max(0, GAME_CONFIG.tripDurationMs / 1000 - elapsed);
+    
+    // Time's up
+    if (s.timeRemaining <= 0 && !s.isDelivery && !s.isAccident) {
+      s.isAccident = true;
+      s.speed = 0;
+      this.endRound(false, undefined);
+    }
+    
     // Position advances in "segment units" (1 unit = 1 segment)
     s.position += s.speed * dt * 0.3;
     s.distance = s.position;
@@ -164,6 +177,7 @@ export class GameEngine {
     
     this.onSpeedUpdate?.(s.speed);
     this.onMoneyUpdate?.(this.gameData.totalMoney);
+    this.onTimeUpdate?.(s.timeRemaining);
   }
 
   private checkCollisions(playerSegIdx: number) {

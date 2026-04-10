@@ -12,6 +12,7 @@ export interface GameState {
   isAccident: boolean;
   isDelivery: boolean;
   hornActive: boolean;
+  timeRemaining: number; // seconds remaining
 }
 
 export interface RoadSegment {
