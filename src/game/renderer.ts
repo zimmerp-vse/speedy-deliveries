@@ -1,5 +1,14 @@
 import { GAME_CONFIG } from './config';
 
+export interface CelebrationParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  emoji: string;
+  alpha: number;
+}
+
 export interface GameState {
   position: number;
   speed: number;
@@ -12,7 +21,15 @@ export interface GameState {
   isAccident: boolean;
   isDelivery: boolean;
   hornActive: boolean;
-  timeRemaining: number; // seconds remaining
+  timeRemaining: number;
+  // Celebration
+  celebrating: boolean;
+  celebrationTimer: number; // seconds remaining in celebration
+  celebrationParticles: CelebrationParticle[];
+  celebrationFlashAlpha: number;
+  // Delivery type for this round
+  deliveryType: typeof GAME_CONFIG.deliveryTypes[0];
+  gameTime: number; // total elapsed time for animations
 }
 
 export interface RoadSegment {
@@ -24,13 +41,9 @@ export interface RoadSegment {
 export function createSegments(count: number): RoadSegment[] {
   const segs: RoadSegment[] = [];
   for (let i = 0; i < count; i++) {
-    // First 20 segments are straight, then gentle curves
     const t = Math.max(0, i - 20);
     const curve = Math.sin(t * 0.015) * 0.15 + Math.sin(t * 0.04) * 0.08;
-    segs.push({
-      curve,
-      hill: Math.sin(i * 0.01) * 40,
-    });
+    segs.push({ curve, hill: Math.sin(i * 0.01) * 40 });
   }
   return segs;
 }
@@ -57,24 +70,19 @@ export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
   let emojis: string[];
 
   if (r < cfg.carSpawnRate) {
-    type = 'car';
-    emojis = cfg.obstacles.cars;
+    type = 'car'; emojis = cfg.obstacles.cars;
   } else if (r < cfg.carSpawnRate + cfg.obstacleSpawnRate) {
-    type = 'obstacle';
-    emojis = cfg.obstacles.roadObstacles;
+    type = 'obstacle'; emojis = cfg.obstacles.roadObstacles;
   } else {
-    type = 'pedestrian';
-    emojis = cfg.obstacles.pedestrians;
+    type = 'pedestrian'; emojis = cfg.obstacles.pedestrians;
   }
 
   const laneOffsets = [-0.58, 0, 0.58];
   const laneCenter = laneOffsets[Math.floor(Math.random() * laneOffsets.length)];
 
   seg.sprite = {
-    type,
-    emoji: emojis[Math.floor(Math.random() * emojis.length)],
-    offset: laneCenter + (Math.random() - 0.5) * 0.06,
-    active: true,
+    type, emoji: emojis[Math.floor(Math.random() * emojis.length)],
+    offset: laneCenter + (Math.random() - 0.5) * 0.06, active: true,
   };
 }
 
@@ -92,35 +100,31 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, horizon);
 
-  // Fill ground below horizon
+  // Ground below horizon
   ctx.fillStyle = scene.groundColor;
   ctx.fillRect(0, horizon, W, H - horizon);
 
-  // Build projected lines from near (bottom) to far (horizon)
-  // Each line = one road segment
-  const lines: {
-    screenY: number; screenX: number; screenW: number; idx: number;
-  }[] = [];
-
-  let x = 0;
-  let dx = 0;
+  // Build projected lines
+  const lines: { screenY: number; screenX: number; screenW: number; idx: number }[] = [];
+  let x = 0, dx = 0;
 
   for (let n = 1; n <= drawDist; n++) {
     const idx = (baseIdx + n) % N;
     const seg = segments[idx];
-
     const perspective = 1 / n;
     const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
-    // playerX shifts the whole road left/right to keep car on road
     const screenX = W / 2 + (x - playerX * n * 0.12) * perspective * W * 0.3;
-
     lines.push({ screenY, screenX, screenW: roadHalfW, idx });
-
     dx += seg.curve * 0.5;
-    dx *= 0.98; // dampen to prevent wild curves
+    dx *= 0.98;
     x += dx;
   }
+
+  // Destination segment info
+  const cfg = GAME_CONFIG;
+  const destSegStart = cfg.deliveryDistance - cfg.destinationVisibleDistance;
+  const destSeg = cfg.deliveryDistance;
 
   // Draw from farthest to nearest
   for (let i = lines.length - 1; i > 0; i--) {
@@ -133,37 +137,76 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const y2 = Math.ceil(prev.screenY);
     if (y2 <= y1) continue;
 
-    // Grass (alternating)
-    ctx.fillStyle = dark ? '#1a7a08' : '#23991a';
+    // Check if this segment is in the finish zone
+    const segDist = prev.idx;
+    const inFinishZone = segDist >= destSegStart && segDist <= destSeg;
+
+    // Grass
+    ctx.fillStyle = inFinishZone
+      ? (dark ? '#0e8a2e' : '#18b840')
+      : (dark ? '#1a7a08' : '#23991a');
     ctx.fillRect(0, y1, W, y2 - y1 + 1);
 
-    // Rumble strips (alternating)
-    const rumbleC = dark ? '#d61d1d' : '#f0e6e6';
+    // Rumble strips - checkered in finish zone
+    const rumbleC = inFinishZone
+      ? (dark ? '#ffffff' : '#222222')
+      : (dark ? '#d61d1d' : '#f0e6e6');
     drawTrap(ctx, rumbleC,
       cur.screenX, y1, cur.screenW * 1.2,
       prev.screenX, y2 + 1, prev.screenW * 1.2);
 
-    // Road surface - uniform color, slightly overlapped to hide segment seams
-    drawTrap(ctx, '#555555',
+    // Road surface - green tint in finish zone
+    const roadColor = inFinishZone ? '#447744' : '#555555';
+    drawTrap(ctx, roadColor,
       cur.screenX, y1 - 1, cur.screenW,
       prev.screenX, y2 + 1, prev.screenW);
 
-    // Dashed lane dividers (only draw every other group of 3 segments)
+    // Lane dividers
     if (dark) {
       const lw1 = Math.max(2, cur.screenW * 0.015);
       const lw2 = Math.max(2, prev.screenW * 0.015);
       const lane1Cur = cur.screenW * 0.33;
       const lane1Prev = prev.screenW * 0.33;
-
-      drawTrap(ctx, '#e8e8e0',
-        cur.screenX - lane1Cur, y1, lw1,
-        prev.screenX - lane1Prev, y2, lw2);
-      drawTrap(ctx, '#e8e8e0',
-        cur.screenX + lane1Cur, y1, lw1,
-        prev.screenX + lane1Prev, y2, lw2);
+      const lineColor = inFinishZone ? '#aaffaa' : '#e8e8e0';
+      drawTrap(ctx, lineColor, cur.screenX - lane1Cur, y1, lw1, prev.screenX - lane1Prev, y2, lw2);
+      drawTrap(ctx, lineColor, cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
     }
 
-    // Sprites should use the near edge of the segment so they visually reach the player
+    // Destination marker at the delivery point
+    if (segDist >= destSeg - 2 && segDist <= destSeg + 2) {
+      const distN = i;
+      const scale = Math.max(0.3, Math.min(2.0, 4.0 / (distN + 1.15)));
+      const destX = prev.screenX;
+      const destY = Math.min(H - 18, prev.screenY);
+
+      // Glow behind destination
+      const glowRadius = 40 * scale;
+      const glow = ctx.createRadialGradient(destX, destY - glowRadius * 0.5, 0, destX, destY - glowRadius * 0.5, glowRadius);
+      glow.addColorStop(0, 'rgba(255,255,100,0.4)');
+      glow.addColorStop(1, 'rgba(255,255,100,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(destX, destY - glowRadius * 0.5, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Destination emoji
+      const fontSize = Math.max(20, Math.min(100, 65 * scale));
+      ctx.font = `${fontSize}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(state.deliveryType.emoji, destX, destY);
+
+      // Flags on road edges
+      const flagSize = Math.max(12, Math.min(50, 30 * scale));
+      ctx.font = `${flagSize}px serif`;
+      ctx.fillText('🚩', destX - prev.screenW * 0.9, destY);
+      ctx.fillText('🚩', destX + prev.screenW * 0.9, destY);
+
+      // Waving person next to destination
+      drawWavingPerson(ctx, destX + fontSize * 0.7, destY, scale, state.gameTime, state.deliveryType);
+    }
+
+    // Sprites
     if (seg.sprite?.active) {
       const distN = i;
       const spriteScale = Math.max(0.22, Math.min(1.6, 3.4 / (distN + 1.15)));
@@ -173,8 +216,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       if (seg.sprite.type === 'car') {
         drawObstacleCar(ctx, spriteX, spriteY, spriteScale);
       } else {
-        const fontSize = Math.max(16, Math.min(88, 58 * spriteScale));
-        ctx.font = `${fontSize}px serif`;
+        const fSize = Math.max(16, Math.min(88, 58 * spriteScale));
+        ctx.font = `${fSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
         ctx.fillText(seg.sprite.emoji, spriteX, spriteY);
@@ -198,6 +241,70 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     ctx.fillText('📢 HONK!', W / 2, horizon - 20);
     ctx.shadowBlur = 0;
   }
+
+  // Celebration effects
+  if (state.celebrating) {
+    drawCelebrationEffects(ctx, state, W, H);
+  }
+}
+
+function drawWavingPerson(
+  ctx: CanvasRenderingContext2D, x: number, y: number, scale: number,
+  gameTime: number, deliveryType: typeof GAME_CONFIG.deliveryTypes[0]
+) {
+  const waveOffset = Math.sin(gameTime * 5) * 6 * scale;
+  const fontSize = Math.max(14, Math.min(60, 40 * scale));
+
+  // Person
+  ctx.font = `${fontSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(deliveryType.waver, x, y);
+
+  // Waving hand above person
+  const handSize = fontSize * 0.6;
+  ctx.font = `${handSize}px serif`;
+  ctx.fillText(deliveryType.waverEmoji, x + waveOffset, y - fontSize * 0.8);
+}
+
+function drawCelebrationEffects(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
+  // Flash overlay
+  if (state.celebrationFlashAlpha > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${state.celebrationFlashAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Particles
+  for (const p of state.celebrationParticles) {
+    if (p.alpha <= 0) continue;
+    ctx.globalAlpha = p.alpha;
+    ctx.font = '24px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.emoji, p.x, p.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // "DELIVERED!" text with scale-in
+  const t = 1 - (state.celebrationTimer / (GAME_CONFIG.celebrationDurationMs / 1000));
+  const textScale = Math.min(1, t * 3); // quick scale in
+  if (textScale > 0) {
+    ctx.save();
+    ctx.translate(W / 2, H * 0.35);
+    ctx.scale(textScale, textScale);
+    ctx.font = 'bold 48px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 4;
+    ctx.strokeText('DELIVERED! 🎉', 0, 0);
+    ctx.fillStyle = '#22c55e';
+    ctx.shadowColor = '#22c55e';
+    ctx.shadowBlur = 20;
+    ctx.fillText('DELIVERED! 🎉', 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
 }
 
 function drawTrap(
@@ -216,39 +323,32 @@ function drawTrap(
 }
 
 function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
-  // Rear view of car driving ahead (same direction as player)
   const w = 58 * scale, h = 42 * scale;
   const cx = x, cy = y;
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
   ctx.ellipse(cx, cy + 2 * scale, w * 0.45, 3 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Pick color based on position
   const colors = ['#3b82f6', '#eab308', '#10b981', '#f97316', '#a855f7', '#ef4444'];
   const color = colors[Math.floor(Math.abs(x * 7 + y * 3)) % colors.length];
 
-  // Lower body
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.5, [2 * scale, 2 * scale, 4 * scale, 4 * scale]);
   ctx.fill();
 
-  // Upper cabin
   ctx.fillStyle = shadeColor(color, -25);
   ctx.beginPath();
   ctx.roundRect(cx - w * 0.35, cy - h, w * 0.7, h * 0.55, [4 * scale, 4 * scale, 0, 0]);
   ctx.fill();
 
-  // Rear window
   ctx.fillStyle = 'rgba(135,206,235,0.7)';
   ctx.beginPath();
   ctx.roundRect(cx - w * 0.28, cy - h + 3 * scale, w * 0.56, h * 0.35, [3 * scale, 3 * scale, 0, 0]);
   ctx.fill();
 
-  // Tail lights
   ctx.fillStyle = '#ff2222';
   ctx.shadowColor = '#ff0000';
   ctx.shadowBlur = 4 * scale;
@@ -260,12 +360,10 @@ function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, sc
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Wheels (visible at bottom sides)
   ctx.fillStyle = '#111';
   ctx.fillRect(cx - w / 2 - 2 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
   ctx.fillRect(cx + w / 2 - 3 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
 
-  // License plate
   ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(cx - 6 * scale, cy - 3 * scale, 12 * scale, 4 * scale, scale);
@@ -285,13 +383,11 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   const cy = H - 8;
   const cw = 90, ch = 60;
 
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.ellipse(cx, cy + 2, cw * 0.52, 7, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // --- Rear body (trunk area) ---
   const bodyG = ctx.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
   bodyG.addColorStop(0, '#ff3333');
   bodyG.addColorStop(0.3, '#ee1111');
@@ -302,17 +398,14 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   ctx.roundRect(cx - cw / 2, cy - ch * 0.55, cw, ch * 0.55, [4, 4, 6, 6]);
   ctx.fill();
 
-  // Body highlight stripe
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   ctx.fillRect(cx - cw / 2 + 4, cy - ch * 0.5, cw - 8, 3);
 
-  // --- Upper body / cabin ---
   ctx.fillStyle = '#bb0000';
   ctx.beginPath();
   ctx.roundRect(cx - cw * 0.35, cy - ch, cw * 0.7, ch * 0.5, [6, 6, 0, 0]);
   ctx.fill();
 
-  // Windshield
   const wsG = ctx.createLinearGradient(0, cy - ch, 0, cy - ch * 0.55);
   wsG.addColorStop(0, 'rgba(180,220,255,0.9)');
   wsG.addColorStop(1, 'rgba(100,160,220,0.7)');
@@ -321,55 +414,47 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
   ctx.fill();
 
-  // Windshield frame
   ctx.strokeStyle = '#990000';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
   ctx.stroke();
 
-  // --- Two passengers ---
-  // Man (left, brown hair)
-  drawPassenger(ctx, cx - 10, cy - ch + 2, 'man', state.isAccident);
-  // Woman (right, blonde hair)
-  drawPassenger(ctx, cx + 10, cy - ch + 2, 'woman', state.isAccident);
+  // Passengers - celebrating if delivering
+  const celebrating = state.celebrating;
+  drawPassenger(ctx, cx - 10, cy - ch + 2, 'man', state.isAccident, celebrating, state.gameTime);
+  drawPassenger(ctx, cx + 10, cy - ch + 2, 'woman', state.isAccident, celebrating, state.gameTime);
 
-  // --- Side mirrors ---
+  // Side mirrors
   ctx.fillStyle = '#cc0000';
-  // Left mirror
   ctx.beginPath();
   ctx.moveTo(cx - cw * 0.35, cy - ch * 0.7);
   ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.65);
   ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.55);
   ctx.lineTo(cx - cw * 0.35, cy - ch * 0.55);
   ctx.fill();
-  // Right mirror
   ctx.beginPath();
   ctx.moveTo(cx + cw * 0.35, cy - ch * 0.7);
   ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.65);
   ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.55);
   ctx.lineTo(cx + cw * 0.35, cy - ch * 0.55);
   ctx.fill();
-  // Mirror glass
   ctx.fillStyle = 'rgba(135,206,235,0.6)';
   ctx.fillRect(cx - cw * 0.35 - 9, cy - ch * 0.64, 8, 8);
   ctx.fillRect(cx + cw * 0.35 + 2, cy - ch * 0.64, 8, 8);
 
-  // --- Wheels ---
+  // Wheels
   ctx.fillStyle = '#111';
   const wheelW = 10, wheelH = 16;
-  // Left wheels
   ctx.fillRect(cx - cw / 2 - 4, cy - ch * 0.48, wheelW, wheelH);
   ctx.fillRect(cx - cw / 2 - 4, cy - 14, wheelW, wheelH);
-  // Right wheels
   ctx.fillRect(cx + cw / 2 - 6, cy - ch * 0.48, wheelW, wheelH);
   ctx.fillRect(cx + cw / 2 - 6, cy - 14, wheelW, wheelH);
-  // Tire shine
   ctx.fillStyle = '#333';
   ctx.fillRect(cx - cw / 2 - 2, cy - ch * 0.45, 6, 3);
   ctx.fillRect(cx + cw / 2 - 4, cy - ch * 0.45, 6, 3);
 
-  // --- Tail lights ---
+  // Tail lights
   const braking = state.speed < 5;
   ctx.fillStyle = braking ? '#ff0000' : '#cc3333';
   if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 12; }
@@ -381,12 +466,11 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  // Turn signal (orange)
   ctx.fillStyle = '#ff8800';
   ctx.fillRect(cx - cw / 2 + 4, cy - 14, 6, 3);
   ctx.fillRect(cx + cw / 2 - 10, cy - 14, 6, 3);
 
-  // --- License plate ---
+  // License plate
   ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.roundRect(cx - 12, cy - 5, 24, 8, 2);
@@ -397,56 +481,81 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   ctx.textBaseline = 'middle';
   ctx.fillText('OUT-RUN', cx, cy - 1);
 
-  // --- Rear badge ---
   ctx.fillStyle = '#ddd';
   ctx.font = '4px sans-serif';
   ctx.fillText('TURBO', cx, cy - 18);
 }
 
-function drawPassenger(ctx: CanvasRenderingContext2D, x: number, y: number, type: 'man' | 'woman', isAccident: boolean) {
+function drawPassenger(
+  ctx: CanvasRenderingContext2D, x: number, y: number,
+  type: 'man' | 'woman', isAccident: boolean, celebrating: boolean, gameTime: number
+) {
+  // Celebration bounce
+  const bounceY = celebrating ? Math.sin(gameTime * 8) * 4 : 0;
+  const drawY = y - bounceY;
+
   // Head
   ctx.fillStyle = '#fcd5a0';
   ctx.beginPath();
-  ctx.arc(x, y - 4, 6, 0, Math.PI * 2);
+  ctx.arc(x, drawY - 4, 6, 0, Math.PI * 2);
   ctx.fill();
 
   // Hair
   if (type === 'man') {
     ctx.fillStyle = '#6b3e1f';
     ctx.beginPath();
-    ctx.arc(x, y - 7, 6, Math.PI, 2 * Math.PI);
+    ctx.arc(x, drawY - 7, 6, Math.PI, 2 * Math.PI);
     ctx.fill();
-    ctx.fillRect(x - 5, y - 9, 10, 4);
+    ctx.fillRect(x - 5, drawY - 9, 10, 4);
   } else {
     ctx.fillStyle = '#f0c040';
     ctx.beginPath();
-    ctx.arc(x, y - 7, 6.5, Math.PI, 2 * Math.PI);
+    ctx.arc(x, drawY - 7, 6.5, Math.PI, 2 * Math.PI);
     ctx.fill();
-    ctx.fillRect(x - 6, y - 9, 12, 4);
-    // Flowing hair sides
-    ctx.fillRect(x - 7, y - 7, 3, 10);
-    ctx.fillRect(x + 4, y - 7, 3, 10);
+    ctx.fillRect(x - 6, drawY - 9, 12, 4);
+    ctx.fillRect(x - 7, drawY - 7, 3, 10);
+    ctx.fillRect(x + 4, drawY - 7, 3, 10);
   }
 
-  // Expression
-  ctx.fillStyle = '#333';
-  ctx.font = '8px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  if (isAccident) {
-    // Angry/scared eyes
-    ctx.fillText('>', x - 3, y - 4);
-    ctx.fillText('<', x + 3, y - 4);
+  if (celebrating) {
+    // Raised arms!
+    const armWave = Math.sin(gameTime * 10 + (type === 'woman' ? 1 : 0)) * 3;
+    ctx.strokeStyle = '#fcd5a0';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    // Left arm raised
+    ctx.beginPath();
+    ctx.moveTo(x - 5, drawY);
+    ctx.lineTo(x - 8 + armWave, drawY - 14);
+    ctx.stroke();
+    // Right arm raised
+    ctx.beginPath();
+    ctx.moveTo(x + 5, drawY);
+    ctx.lineTo(x + 8 - armWave, drawY - 14);
+    ctx.stroke();
+    // Happy face
+    ctx.fillStyle = '#333';
+    ctx.font = '8px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('😄', x, drawY + 4);
+  } else if (isAccident) {
+    ctx.fillStyle = '#333';
+    ctx.font = '8px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('>', x - 3, drawY - 4);
+    ctx.fillText('<', x + 3, drawY - 4);
     ctx.fillStyle = '#c00';
-    ctx.fillText(type === 'man' ? '😤' : '😱', x, y + 6);
+    ctx.fillText(type === 'man' ? '😤' : '😱', x, drawY + 6);
   } else {
-    // Cool sunglasses
+    // Sunglasses
     ctx.fillStyle = '#111';
-    ctx.fillRect(x - 5, y - 6, 4, 3);
-    ctx.fillRect(x + 1, y - 6, 4, 3);
+    ctx.fillRect(x - 5, drawY - 6, 4, 3);
+    ctx.fillRect(x + 1, drawY - 6, 4, 3);
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.fillRect(x - 4, y - 6, 2, 1);
-    ctx.fillRect(x + 2, y - 6, 2, 1);
+    ctx.fillRect(x - 4, drawY - 6, 2, 1);
+    ctx.fillRect(x + 2, drawY - 6, 2, 1);
   }
 }
 
@@ -469,5 +578,5 @@ function drawBar(ctx: CanvasRenderingContext2D, state: GameState, W: number) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText('📦', x + 2, y + h / 2);
-  ctx.fillText('🏠', x + w - 10, y + h / 2);
+  ctx.fillText(state.deliveryType.emoji, x + w - 10, y + h / 2);
 }

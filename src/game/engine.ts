@@ -1,5 +1,5 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
-import { GameState, createSegments, spawnObstacles, render } from './renderer';
+import { GameState, CelebrationParticle, createSegments, spawnObstacles, render } from './renderer';
 
 export interface Controls {
   left: boolean;
@@ -46,6 +46,7 @@ export class GameEngine {
   }
 
   private createInitialState(sceneIdx: number): GameState {
+    const deliveryType = GAME_CONFIG.deliveryTypes[Math.floor(Math.random() * GAME_CONFIG.deliveryTypes.length)];
     return {
       position: 0,
       speed: 0,
@@ -59,6 +60,12 @@ export class GameEngine {
       isDelivery: false,
       hornActive: false,
       timeRemaining: GAME_CONFIG.tripDurationMs / 1000,
+      celebrating: false,
+      celebrationTimer: 0,
+      celebrationParticles: [],
+      celebrationFlashAlpha: 0,
+      deliveryType,
+      gameTime: 0,
     };
   }
 
@@ -100,6 +107,29 @@ export class GameEngine {
     const cfg = GAME_CONFIG;
     const s = this.state;
     
+    s.gameTime += dt;
+    
+    // Update celebration
+    if (s.celebrating) {
+      s.celebrationTimer -= dt;
+      s.celebrationFlashAlpha = Math.max(0, s.celebrationFlashAlpha - dt * 2);
+      // Update particles
+      for (const p of s.celebrationParticles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 120 * dt; // gravity
+        p.alpha = Math.max(0, p.alpha - dt * 0.7);
+      }
+      if (s.celebrationTimer <= 0) {
+        s.celebrating = false;
+        this.running = false;
+      }
+      this.onSpeedUpdate?.(s.speed);
+      this.onMoneyUpdate?.(this.gameData.totalMoney);
+      this.onTimeUpdate?.(s.timeRemaining);
+      return; // skip normal gameplay during celebration
+    }
+    
     // Speed
     if (this.controls.accelerate) {
       this.cruiseEnabled = true;
@@ -120,23 +150,19 @@ export class GameEngine {
       s.speed = Math.max(s.speed - cfg.idleDeceleration * dt, 0);
     }
     
-    // Steering - car stays wherever you steer it
     const steerDir = (this.controls.left ? -1 : 0) + (this.controls.right ? 1 : 0);
     s.steering = steerDir;
     
     if (s.speed > 0) {
-      // Steering scales with speed but keeps a minimum responsiveness
       const steerMul = 0.4 + 0.6 * (s.speed / cfg.maxSpeed);
       s.playerX += steerDir * cfg.steeringSpeed * dt * steerMul;
       
-      // Road curve gently pushes player (centrifugal effect)
       const segIdx = Math.floor(s.position) % s.segments.length;
       const seg = s.segments[segIdx];
       if (seg) {
         s.playerX += seg.curve * dt * (s.speed / cfg.maxSpeed) * 0.3;
       }
       
-      // Clamp to road edges (wider range = all 3 lanes)
       s.playerX = Math.max(-2.5, Math.min(2.5, s.playerX));
     }
     
@@ -153,7 +179,6 @@ export class GameEngine {
       this.endRound(false, undefined);
     }
     
-    // Position advances in "segment units" (1 unit = 1 segment)
     s.position += s.speed * dt * 0.22;
     s.distance = s.position;
     s.deliveryProgress = Math.min(s.distance / cfg.deliveryDistance, 1);
@@ -168,10 +193,14 @@ export class GameEngine {
     // Collisions
     this.checkCollisions(playerSegIdx);
     
-    // Delivery
+    // Delivery — start celebration
     if (s.deliveryProgress >= 1 && !s.isDelivery && !s.isAccident) {
       s.isDelivery = true;
       s.speed = 0;
+      s.celebrating = true;
+      s.celebrationTimer = GAME_CONFIG.celebrationDurationMs / 1000;
+      s.celebrationFlashAlpha = 0.6;
+      this.spawnCelebrationParticles();
       this.endRound(true);
     }
     
@@ -206,8 +235,25 @@ export class GameEngine {
     this.endRound(false, seg.sprite.type);
   }
 
+  private spawnCelebrationParticles() {
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    const emojis = GAME_CONFIG.celebrationEmojis;
+    for (let i = 0; i < 18; i++) {
+      this.state.celebrationParticles.push({
+        x: W / 2 + (Math.random() - 0.5) * W * 0.4,
+        y: H * 0.5 + Math.random() * H * 0.2,
+        vx: (Math.random() - 0.5) * 200,
+        vy: -150 - Math.random() * 200,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        alpha: 1,
+      });
+    }
+  }
+
   private endRound(success: boolean, accidentType?: AccidentType) {
-    this.running = false;
+    // Keep running during celebration for animation, stop otherwise
+    if (!success) this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
     
     let moneyEarned = 0, moneyLost = 0;
