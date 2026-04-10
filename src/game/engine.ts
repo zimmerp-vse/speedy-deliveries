@@ -154,7 +154,7 @@ export class GameEngine {
     }
     
     // Position advances in "segment units" (1 unit = 1 segment)
-    s.position += s.speed * dt * 0.3;
+    s.position += s.speed * dt * 0.22;
     s.distance = s.position;
     s.deliveryProgress = Math.min(s.distance / cfg.deliveryDistance, 1);
     
