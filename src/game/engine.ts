@@ -122,6 +122,7 @@ export class GameEngine {
       }
       if (s.celebrationTimer <= 0) {
         s.celebrating = false;
+        this.running = false;
       }
       this.onSpeedUpdate?.(s.speed);
       this.onMoneyUpdate?.(this.gameData.totalMoney);
