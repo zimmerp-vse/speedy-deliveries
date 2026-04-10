@@ -174,7 +174,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     }
 
     // Destination marker at the delivery point
-    if (segDist >= destSeg - 2 && segDist <= destSeg + 2) {
+    if (segAbsDist >= destSeg - 2 && segAbsDist <= destSeg + 2) {
       const distN = i;
       const scale = Math.max(0.3, Math.min(2.0, 4.0 / (distN + 1.15)));
       const destX = prev.screenX;
