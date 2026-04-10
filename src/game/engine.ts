@@ -251,7 +251,8 @@ export class GameEngine {
   }
 
   private endRound(success: boolean, accidentType?: AccidentType) {
-    this.running = false;
+    // Keep running during celebration for animation, stop otherwise
+    if (!success) this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
     
     let moneyEarned = 0, moneyLost = 0;
