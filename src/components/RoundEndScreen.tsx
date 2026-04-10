@@ -22,7 +22,7 @@ export function RoundEndScreen({ result, onContinue }: RoundEndScreenProps) {
         </div>
         
         <h2 className="font-display text-2xl font-bold mb-2 text-foreground">
-          {isSuccess ? 'DELIVERED!' : 'CRASH!'}
+          {isSuccess ? 'DELIVERED!' : result.accidentType ? 'CRASH!' : 'TIME\'S UP!'}
         </h2>
         
         <p className="font-arcade text-xs mb-4 text-muted-foreground leading-relaxed">

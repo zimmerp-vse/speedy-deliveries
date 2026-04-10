@@ -2,7 +2,7 @@
 export const GAME_CONFIG = {
   // Round settings
   totalRounds: 10,
-  tripDurationMs: 20000, // 20 seconds per trip
+  tripDurationMs: 45000, // 45 seconds per trip (generous)
   
   // Speed settings
   maxSpeed: 150,
