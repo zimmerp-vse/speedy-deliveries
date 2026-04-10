@@ -234,6 +234,22 @@ export class GameEngine {
     this.endRound(false, seg.sprite.type);
   }
 
+  private spawnCelebrationParticles() {
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    const emojis = GAME_CONFIG.celebrationEmojis;
+    for (let i = 0; i < 18; i++) {
+      this.state.celebrationParticles.push({
+        x: W / 2 + (Math.random() - 0.5) * W * 0.4,
+        y: H * 0.5 + Math.random() * H * 0.2,
+        vx: (Math.random() - 0.5) * 200,
+        vy: -150 - Math.random() * 200,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        alpha: 1,
+      });
+    }
+  }
+
   private endRound(success: boolean, accidentType?: AccidentType) {
     this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
