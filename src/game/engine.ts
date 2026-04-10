@@ -46,6 +46,7 @@ export class GameEngine {
   }
 
   private createInitialState(sceneIdx: number): GameState {
+    const deliveryType = GAME_CONFIG.deliveryTypes[Math.floor(Math.random() * GAME_CONFIG.deliveryTypes.length)];
     return {
       position: 0,
       speed: 0,
@@ -59,6 +60,12 @@ export class GameEngine {
       isDelivery: false,
       hornActive: false,
       timeRemaining: GAME_CONFIG.tripDurationMs / 1000,
+      celebrating: false,
+      celebrationTimer: 0,
+      celebrationParticles: [],
+      celebrationFlashAlpha: 0,
+      deliveryType,
+      gameTime: 0,
     };
   }
 
