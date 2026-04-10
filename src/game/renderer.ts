@@ -105,8 +105,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillRect(0, horizon, W, H - horizon);
 
   // Build projected lines
-  const lines: { screenY: number; screenX: number; screenW: number; idx: number }[] = [];
+  const lines: { screenY: number; screenX: number; screenW: number; idx: number; absDist: number }[] = [];
   let x = 0, dx = 0;
+  const playerAbsPos = Math.floor(position);
 
   for (let n = 1; n <= drawDist; n++) {
     const idx = (baseIdx + n) % N;
@@ -115,7 +116,7 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
     const screenX = W / 2 + (x - playerX * n * 0.12) * perspective * W * 0.3;
-    lines.push({ screenY, screenX, screenW: roadHalfW, idx });
+    lines.push({ screenY, screenX, screenW: roadHalfW, idx, absDist: playerAbsPos + n });
     dx += seg.curve * 0.5;
     dx *= 0.98;
     x += dx;
@@ -137,9 +138,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const y2 = Math.ceil(prev.screenY);
     if (y2 <= y1) continue;
 
-    // Check if this segment is in the finish zone
-    const segDist = prev.idx;
-    const inFinishZone = segDist >= destSegStart && segDist <= destSeg;
+    // Check if this segment is in the finish zone using absolute distance
+    const segAbsDist = prev.absDist;
+    const inFinishZone = segAbsDist >= destSegStart && segAbsDist <= destSeg;
 
     // Grass
     ctx.fillStyle = inFinishZone
