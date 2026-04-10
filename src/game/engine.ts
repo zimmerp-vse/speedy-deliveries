@@ -1,5 +1,5 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
-import { GameState, createSegments, spawnObstacles, render } from './renderer';
+import { GameState, CelebrationParticle, createSegments, spawnObstacles, render } from './renderer';
 
 export interface Controls {
   left: boolean;

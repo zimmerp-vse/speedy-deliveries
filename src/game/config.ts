@@ -35,6 +35,20 @@ export const GAME_CONFIG = {
   
   // Delivery distance (in segments)
   deliveryDistance: 300,
+  destinationVisibleDistance: 28, // how many segments before finish the destination appears
+  
+  // Delivery types (extensible)
+  deliveryTypes: [
+    { emoji: '🏠', label: 'House', waver: '🧑', waverEmoji: '👋' },
+    { emoji: '🛥️', label: 'Yacht', waver: '🧑‍✈️', waverEmoji: '👋' },
+    { emoji: '🚛', label: 'Truck', waver: '👷', waverEmoji: '👋' },
+    { emoji: '🏢', label: 'Office', waver: '🧑‍💼', waverEmoji: '👋' },
+    { emoji: '🏪', label: 'Shop', waver: '🧑‍🍳', waverEmoji: '👋' },
+  ],
+  
+  // Celebration
+  celebrationDurationMs: 1500,
+  celebrationEmojis: ['⭐', '🎉', '💰', '🎊', '✨', '🌟'],
   
   // Visual
   cameraHeight: 1000,
