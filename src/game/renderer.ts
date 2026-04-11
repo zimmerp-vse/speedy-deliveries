@@ -104,7 +104,57 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = scene.groundColor;
   ctx.fillRect(0, horizon, W, H - horizon);
 
-  // Build projected lines
+  // Parallax scroll offset
+  const parallaxOffset = (position * 0.3) % W;
+
+  // Distant horizon scenery (skyline — just above/at horizon)
+  if ((scene as any).horizon?.length > 0) {
+    const horizonEmojis = (scene as any).horizon as string[];
+    const horizonY = horizon + 2;
+    const spacing = W / 5;
+    for (let layer = 0; layer < 2; layer++) {
+      const layerOffset = parallaxOffset * (0.15 + layer * 0.1);
+      const size = layer === 0 ? 28 : 20;
+      const yOff = layer === 0 ? 0 : -4;
+      ctx.globalAlpha = layer === 0 ? 0.5 : 0.35;
+      ctx.font = `${size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      for (let i = -1; i < 7; i++) {
+        const baseX = i * spacing - (layerOffset % spacing);
+        const emoji = horizonEmojis[Math.abs(i + layer * 3 + 50) % horizonEmojis.length];
+        ctx.fillText(emoji, baseX, horizonY + yOff);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Midground scenery (scattered across landscape, avoiding road center)
+  if ((scene as any).midground?.length > 0) {
+    const mgEmojis = (scene as any).midground as string[];
+    const mgSpacing = W / 4;
+    for (let depth = 0; depth < 3; depth++) {
+      const depthFactor = 0.03 + depth * 0.04;
+      const mgY = horizon + (H - horizon) * depthFactor;
+      const size = 14 + depth * 6;
+      const scrollSpeed = 0.25 + depth * 0.15;
+      const layerOffset = (parallaxOffset * scrollSpeed) % mgSpacing;
+      ctx.globalAlpha = 0.45 + depth * 0.15;
+      ctx.font = `${size}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      for (let i = -1; i < 8; i++) {
+        const baseX = i * mgSpacing - layerOffset + (depth % 2) * mgSpacing * 0.5;
+        if (baseX < W * 0.28 || baseX > W * 0.72) {
+          const emoji = mgEmojis[Math.abs(i + depth * 5 + 30) % mgEmojis.length];
+          ctx.fillText(emoji, baseX, mgY);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+
   const lines: { screenY: number; screenX: number; screenW: number; idx: number; absDist: number }[] = [];
   let x = 0, dx = 0;
   const playerAbsPos = Math.floor(position);
