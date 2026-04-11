@@ -173,7 +173,28 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       drawTrap(ctx, lineColor, cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
     }
 
-    // Destination marker at the delivery point
+    // Roadside scenery - every 7 segments, on both sides
+    if (scene.scenery && scene.scenery.length > 0 && cur.idx % 7 === 0) {
+      const distN = i;
+      const sceneryScale = Math.max(0.2, Math.min(1.8, 3.5 / (distN + 1.15)));
+      const fontSize = Math.max(10, Math.min(56, 40 * sceneryScale));
+      const sceneryY = Math.min(H - 10, prev.screenY);
+      // Pick emoji deterministically based on segment index
+      const emojiIdx = Math.abs(cur.idx * 7 + 3) % scene.scenery.length;
+      const emoji = scene.scenery[emojiIdx];
+      const emojiIdx2 = Math.abs(cur.idx * 13 + 5) % scene.scenery.length;
+      const emoji2 = scene.scenery[emojiIdx2];
+
+      ctx.font = `${fontSize}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      // Left side
+      const leftX = prev.screenX - prev.screenW * 1.5;
+      ctx.fillText(emoji, leftX, sceneryY);
+      // Right side
+      const rightX = prev.screenX + prev.screenW * 1.5;
+      ctx.fillText(emoji2, rightX, sceneryY);
+    }
     if (segAbsDist >= destSeg - 2 && segAbsDist <= destSeg + 2) {
       const distN = i;
       const scale = Math.max(0.3, Math.min(2.0, 4.0 / (distN + 1.15)));
