@@ -57,16 +57,16 @@ export const GAME_CONFIG = {
   
   // Scenes / backgrounds
   scenes: [
-    { name: 'Sunset Beach', skyTop: '#ff6b35', skyBottom: '#ffd166', groundColor: '#c8b560' },
-    { name: 'Mountain Pass', skyTop: '#1a1a4e', skyBottom: '#e07050', groundColor: '#556b2f' },
-    { name: 'City Night', skyTop: '#0a0a2e', skyBottom: '#2d1b69', groundColor: '#333333' },
-    { name: 'Desert Highway', skyTop: '#ff8c42', skyBottom: '#ffd700', groundColor: '#daa520' },
-    { name: 'Rainy Town', skyTop: '#4a5568', skyBottom: '#718096', groundColor: '#2d5016' },
-    { name: 'Coastal Road', skyTop: '#0ea5e9', skyBottom: '#7dd3fc', groundColor: '#22c55e' },
-    { name: 'Autumn Forest', skyTop: '#92400e', skyBottom: '#f59e0b', groundColor: '#b45309' },
-    { name: 'Snow Valley', skyTop: '#94a3b8', skyBottom: '#e2e8f0', groundColor: '#f1f5f9' },
-    { name: 'Tropical Island', skyTop: '#06b6d4', skyBottom: '#a78bfa', groundColor: '#15803d' },
-    { name: 'Volcano Road', skyTop: '#7f1d1d', skyBottom: '#f97316', groundColor: '#44403c' },
+    { name: 'Sunset Beach', skyTop: '#ff6b35', skyBottom: '#ffd166', groundColor: '#c8b560', scenery: ['🌴', '🏖️', '⛱️', '🌊'] },
+    { name: 'Mountain Pass', skyTop: '#1a1a4e', skyBottom: '#e07050', groundColor: '#556b2f', scenery: ['🏔️', '🌲', '⛰️', '🪨'] },
+    { name: 'City Night', skyTop: '#0a0a2e', skyBottom: '#2d1b69', groundColor: '#333333', scenery: ['🏢', '🏬', '🏪', '🏗️', '🚏'] },
+    { name: 'Desert Highway', skyTop: '#ff8c42', skyBottom: '#ffd700', groundColor: '#daa520', scenery: ['🌵', '🏜️', '💀', '🦂'] },
+    { name: 'Rainy Town', skyTop: '#4a5568', skyBottom: '#718096', groundColor: '#2d5016', scenery: ['🏘️', '🌳', '🏠', '🚏', '⛪'] },
+    { name: 'Coastal Road', skyTop: '#0ea5e9', skyBottom: '#7dd3fc', groundColor: '#22c55e', scenery: ['🌴', '⛵', '🏝️', '🐚'] },
+    { name: 'Autumn Forest', skyTop: '#92400e', skyBottom: '#f59e0b', groundColor: '#b45309', scenery: ['🍂', '🌳', '🍁', '🌲', '🦌'] },
+    { name: 'Snow Valley', skyTop: '#94a3b8', skyBottom: '#e2e8f0', groundColor: '#f1f5f9', scenery: ['🎿', '⛷️', '🏔️', '🌨️', '⛄'] },
+    { name: 'Tropical Island', skyTop: '#06b6d4', skyBottom: '#a78bfa', groundColor: '#15803d', scenery: ['🌴', '🌺', '🦜', '🍍'] },
+    { name: 'Volcano Road', skyTop: '#7f1d1d', skyBottom: '#f97316', groundColor: '#44403c', scenery: ['🌋', '🪨', '🔥', '💨'] },
   ],
   
   // Fun delivery rewards (shown on successful delivery)
