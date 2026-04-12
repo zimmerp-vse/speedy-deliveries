@@ -47,7 +47,7 @@ export const GAME_CONFIG = {
   ],
   
   // Celebration
-  celebrationDurationMs: 1500,
+  celebrationDurationMs: 3200,
   celebrationEmojis: ['⭐', '🎉', '💰', '🎊', '✨', '🌟'],
   
   // Visual
