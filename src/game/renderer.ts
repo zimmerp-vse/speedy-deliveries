@@ -288,7 +288,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
         }
       }
     }
-    if (segAbsDist >= destSeg - 2 && segAbsDist <= destSeg + 2) {
+    // Destination marker — visible over a wider range
+    if (segAbsDist >= destSeg - 12 && segAbsDist <= destSeg + 2) {
       const distN = i;
       const scale = Math.max(0.3, Math.min(2.0, 4.0 / (distN + 1.15)));
       const destX = prev.screenX;
