@@ -19,6 +19,7 @@ export class GameEngine {
   private running: boolean = false;
   private cruiseEnabled: boolean = false;
   private lastSpawnSegment: number = 0;
+  private pendingCelebrationResult: RoundResult | null = null;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -29,6 +30,7 @@ export class GameEngine {
   public onSpeedUpdate?: (speed: number) => void;
   public onMoneyUpdate?: (money: number) => void;
   public onTimeUpdate?: (time: number) => void;
+  public onCelebrationChange?: (active: boolean) => void;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -72,10 +74,13 @@ export class GameEngine {
   getGameData(): GameData { return this.gameData; }
   getCurrentRound(): number { return this.currentRound; }
   getMoney(): number { return this.gameData.totalMoney; }
+  isCelebrating(): boolean { return this.state.celebrating; }
 
   startRound() {
     this.currentRound++;
     this.state = this.createInitialState(this.currentRound - 1);
+    this.pendingCelebrationResult = null;
+    this.onCelebrationChange?.(false);
     this.roundStartTime = performance.now();
     this.cruiseEnabled = false;
     this.lastSpawnSegment = 0;
@@ -91,6 +96,11 @@ export class GameEngine {
 
   setControls(controls: Partial<Controls>) {
     Object.assign(this.controls, controls);
+  }
+
+  skipCelebration() {
+    if (!this.state.celebrating) return;
+    this.finishCelebration();
   }
 
   private loop = () => {
@@ -109,28 +119,25 @@ export class GameEngine {
     
     s.gameTime += dt;
     
-    // Update celebration
     if (s.celebrating) {
       s.celebrationTimer -= dt;
       s.celebrationFlashAlpha = Math.max(0, s.celebrationFlashAlpha - dt * 2);
-      // Update particles
       for (const p of s.celebrationParticles) {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.vy += 120 * dt; // gravity
+        p.vy += 120 * dt;
         p.alpha = Math.max(0, p.alpha - dt * 0.7);
       }
       if (s.celebrationTimer <= 0) {
-        s.celebrating = false;
-        this.running = false;
+        this.finishCelebration();
+        return;
       }
       this.onSpeedUpdate?.(s.speed);
       this.onMoneyUpdate?.(this.gameData.totalMoney);
       this.onTimeUpdate?.(s.timeRemaining);
-      return; // skip normal gameplay during celebration
+      return;
     }
     
-    // Speed
     if (this.controls.accelerate) {
       this.cruiseEnabled = true;
       const accelRate = s.speed < cfg.cruiseSpeed ? cfg.launchAcceleration : cfg.acceleration;
@@ -168,41 +175,49 @@ export class GameEngine {
     
     s.hornActive = this.controls.horn;
     
-    // Timer
     const elapsed = (performance.now() - this.roundStartTime) / 1000;
     s.timeRemaining = Math.max(0, GAME_CONFIG.tripDurationMs / 1000 - elapsed);
     
-    // Time's up
     if (s.timeRemaining <= 0 && !s.isDelivery && !s.isAccident) {
       s.isAccident = true;
       s.speed = 0;
       this.endRound(false, undefined);
+      return;
     }
     
     s.position += s.speed * dt * 0.22;
+
+    const deliveryStopPosition = Math.max(0, cfg.deliveryDistance - 4);
+    if (s.position >= deliveryStopPosition && !s.isDelivery && !s.isAccident) {
+      s.position = deliveryStopPosition;
+      s.distance = cfg.deliveryDistance;
+      s.deliveryProgress = 1;
+      s.isDelivery = true;
+      s.speed = 0;
+      s.hornActive = false;
+      s.celebrating = true;
+      s.celebrationTimer = GAME_CONFIG.celebrationDurationMs / 1000;
+      s.celebrationFlashAlpha = 0.6;
+      s.celebrationParticles = [];
+      this.spawnCelebrationParticles();
+      this.onCelebrationChange?.(true);
+      this.endRound(true);
+      this.onSpeedUpdate?.(s.speed);
+      this.onMoneyUpdate?.(this.gameData.totalMoney);
+      this.onTimeUpdate?.(s.timeRemaining);
+      return;
+    }
+
     s.distance = s.position;
     s.deliveryProgress = Math.min(s.distance / cfg.deliveryDistance, 1);
     
-    // Spawn
     const playerSegIdx = Math.floor(s.position) % s.segments.length;
     if (playerSegIdx !== this.lastSpawnSegment) {
       spawnObstacles(s.segments, playerSegIdx);
       this.lastSpawnSegment = playerSegIdx;
     }
     
-    // Collisions
     this.checkCollisions(playerSegIdx);
-    
-    // Delivery — start celebration
-    if (s.deliveryProgress >= 1 && !s.isDelivery && !s.isAccident) {
-      s.isDelivery = true;
-      s.speed = 0;
-      s.celebrating = true;
-      s.celebrationTimer = GAME_CONFIG.celebrationDurationMs / 1000;
-      s.celebrationFlashAlpha = 0.6;
-      this.spawnCelebrationParticles();
-      this.endRound(true);
-    }
     
     this.onSpeedUpdate?.(s.speed);
     this.onMoneyUpdate?.(this.gameData.totalMoney);
@@ -251,8 +266,25 @@ export class GameEngine {
     }
   }
 
+  private finishCelebration() {
+    const result = this.pendingCelebrationResult;
+    this.pendingCelebrationResult = null;
+    this.state.celebrating = false;
+    this.state.celebrationTimer = 0;
+    this.state.celebrationFlashAlpha = 0;
+    this.onCelebrationChange?.(false);
+    this.running = false;
+
+    if (!result) return;
+
+    if (this.currentRound >= GAME_CONFIG.totalRounds) {
+      this.onGameEnd?.({ ...this.gameData });
+    } else {
+      this.onRoundEnd?.(result, { ...this.gameData });
+    }
+  }
+
   private endRound(success: boolean, accidentType?: AccidentType) {
-    // Keep running during celebration for animation, stop otherwise
     if (!success) this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
     
@@ -274,6 +306,11 @@ export class GameEngine {
       moneyEarned, moneyLost, scene: this.state.scene.name, timeMs,
     };
     this.gameData.rounds.push(result);
+
+    if (success) {
+      this.pendingCelebrationResult = result;
+      return;
+    }
     
     setTimeout(() => {
       if (this.currentRound >= GAME_CONFIG.totalRounds) {

@@ -19,6 +19,7 @@ export function DrivingGame() {
   const [timeRemaining, setTimeRemaining] = useState(GAME_CONFIG.tripDurationMs / 1000);
   const [lastResult, setLastResult] = useState<RoundResult | null>(null);
   const [gameData, setGameData] = useState<GameData | null>(null);
+  const [celebrating, setCelebrating] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,12 +38,15 @@ export function DrivingGame() {
     engine.onSpeedUpdate = setSpeed;
     engine.onMoneyUpdate = setMoney;
     engine.onTimeUpdate = setTimeRemaining;
+    engine.onCelebrationChange = setCelebrating;
     engine.onRoundEnd = (result, data) => {
+      setCelebrating(false);
       setLastResult(result);
       setGameData({ ...data });
       setPhase('round-end');
     };
     engine.onGameEnd = (data) => {
+      setCelebrating(false);
       setGameData({ ...data });
       setPhase('game-over');
     };
@@ -53,7 +57,6 @@ export function DrivingGame() {
     };
   }, []);
 
-  // Keyboard controls
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine || phase !== 'playing') return;
@@ -73,8 +76,22 @@ export function DrivingGame() {
       }
     };
     
-    const down = (e: KeyboardEvent) => onKey(e, true);
-    const up = (e: KeyboardEvent) => onKey(e, false);
+    const down = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && engine.isCelebrating()) {
+        e.preventDefault();
+        engine.skipCelebration();
+        return;
+      }
+      onKey(e, true);
+    };
+
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && engine.isCelebrating()) {
+        e.preventDefault();
+        return;
+      }
+      onKey(e, false);
+    };
     
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
@@ -87,6 +104,7 @@ export function DrivingGame() {
   const startGame = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    setCelebrating(false);
     setPhase('playing');
     setCurrentRound(1);
     engine.startRound();
@@ -95,6 +113,7 @@ export function DrivingGame() {
   const nextRound = useCallback(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    setCelebrating(false);
     setPhase('playing');
     setCurrentRound(engine.getCurrentRound() + 1);
     engine.startRound();
@@ -122,6 +141,11 @@ export function DrivingGame() {
             totalRounds={GAME_CONFIG.totalRounds}
             timeRemaining={timeRemaining}
           />
+          {celebrating && (
+            <div className="absolute top-16 left-1/2 z-20 -translate-x-1/2 rounded-full border border-border bg-card/85 px-4 py-2 text-center text-xs font-arcade text-foreground shadow-lg backdrop-blur-sm">
+              DELIVERY COMPLETE • PRESS SPACE TO SKIP
+            </div>
+          )}
           <GameControls onControl={handleControl} />
         </>
       )}
