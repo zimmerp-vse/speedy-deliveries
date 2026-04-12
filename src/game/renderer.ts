@@ -232,49 +232,45 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       drawTrap(ctx, lineColor, cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
     }
 
-    // Roadside scenery - every 5 segments, side-specific with realistic scale
-    if (cur.idx % 5 === 0) {
+    // Landscape scenery - spread across the full ground, not just road edge
+    if (cur.idx % 4 === 0) {
       const distN = i;
-      // Scale relative to road width for realistic proportions (car is ~90px, road ~prev.screenW*2)
-      const sceneryScale = Math.max(0.15, Math.min(2.2, 4.0 / (distN + 1.0)));
-      // Realistic size: a tree/house should be roughly car-sized (60-80px at close range)
-      const fontSize = Math.max(8, Math.min(72, 55 * sceneryScale));
+      const baseScale = Math.max(0.15, Math.min(2.2, 4.0 / (distN + 1.0)));
       const sceneryY = Math.min(H - 10, prev.screenY);
 
-      ctx.font = `${fontSize}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-
-      // Left side scenery
       const leftEmojis = sceneAny.leftScenery || scene.scenery || [];
-      if (leftEmojis.length > 0) {
-        const emojiIdx = Math.abs(cur.idx * 7 + 3) % leftEmojis.length;
-        const leftX = prev.screenX - prev.screenW * (1.4 + (cur.idx % 3) * 0.3);
-        ctx.fillText(leftEmojis[emojiIdx], leftX, sceneryY);
-        // Additional deeper element every other time
-        if (cur.idx % 10 === 0 && distN > 3) {
-          const deepIdx = Math.abs(cur.idx * 11 + 7) % leftEmojis.length;
-          const deepX = prev.screenX - prev.screenW * (2.2 + (cur.idx % 2) * 0.4);
-          const deepSize = Math.max(6, fontSize * 0.7);
-          ctx.font = `${deepSize}px serif`;
-          ctx.fillText(leftEmojis[deepIdx], deepX, sceneryY - fontSize * 0.1);
-          ctx.font = `${fontSize}px serif`;
-        }
-      }
-
-      // Right side scenery
       const rightEmojis = sceneAny.rightScenery || scene.scenery || [];
-      if (rightEmojis.length > 0) {
-        const emojiIdx2 = Math.abs(cur.idx * 13 + 5) % rightEmojis.length;
-        const rightX = prev.screenX + prev.screenW * (1.4 + (cur.idx % 3) * 0.3);
-        ctx.fillText(rightEmojis[emojiIdx2], rightX, sceneryY);
-        if (cur.idx % 10 === 5 && distN > 3) {
-          const deepIdx = Math.abs(cur.idx * 17 + 2) % rightEmojis.length;
-          const deepX = prev.screenX + prev.screenW * (2.2 + (cur.idx % 2) * 0.4);
-          const deepSize = Math.max(6, fontSize * 0.7);
-          ctx.font = `${deepSize}px serif`;
-          ctx.fillText(rightEmojis[deepIdx], deepX, sceneryY - fontSize * 0.1);
-          ctx.font = `${fontSize}px serif`;
+
+      // Multiple placement depths on each side
+      const placements = [
+        { mult: 1.3, sizeF: 1.0, freq: 4, seed: 7 },   // close to road
+        { mult: 2.0, sizeF: 0.75, freq: 5, seed: 13 },  // mid distance
+        { mult: 3.2, sizeF: 0.55, freq: 6, seed: 19 },  // far from road
+        { mult: 4.8, sizeF: 0.4, freq: 8, seed: 29 },   // very far / edge of screen
+      ];
+
+      for (const p of placements) {
+        if (cur.idx % p.freq !== 0) continue;
+        const fontSize = Math.max(6, Math.min(72, 55 * baseScale * p.sizeF));
+        const jitterY = ((cur.idx * p.seed) % 7 - 3) * baseScale * 0.5;
+        ctx.font = `${fontSize}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        // Left side
+        if (leftEmojis.length > 0) {
+          const jitterX = ((cur.idx * p.seed * 3) % 5 - 2) * 0.15;
+          const leftX = prev.screenX - prev.screenW * (p.mult + jitterX);
+          const eidx = Math.abs(cur.idx * p.seed + 3) % leftEmojis.length;
+          ctx.fillText(leftEmojis[eidx], leftX, sceneryY + jitterY);
+        }
+
+        // Right side
+        if (rightEmojis.length > 0) {
+          const jitterX = ((cur.idx * p.seed * 7) % 5 - 2) * 0.15;
+          const rightX = prev.screenX + prev.screenW * (p.mult + jitterX);
+          const eidx = Math.abs(cur.idx * p.seed + 11) % rightEmojis.length;
+          ctx.fillText(rightEmojis[eidx], rightX, sceneryY + jitterY);
         }
       }
     }
