@@ -196,12 +196,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const inFinishZone = segAbsDist >= destSegStart && segAbsDist <= destSeg;
 
     // Grass
-    ctx.fillStyle = inFinishZone
+    // Left ground
+    const leftGround = inFinishZone
       ? (dark ? '#0e8a2e' : '#18b840')
-      : (dark ? '#1a7a08' : '#23991a');
-    ctx.fillRect(0, y1, W, y2 - y1 + 1);
-
-    // Rumble strips - checkered in finish zone
+      : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
+    ctx.fillStyle = leftGround;
+    ctx.fillRect(0, y1, W / 2, y2 - y1 + 1);
+    // Right ground
+    const rightGround = inFinishZone
+      ? (dark ? '#0e8a2e' : '#18b840')
+      : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+    ctx.fillStyle = rightGround;
+    ctx.fillRect(W / 2, y1, W / 2, y2 - y1 + 1);
     const rumbleC = inFinishZone
       ? (dark ? '#ffffff' : '#222222')
       : (dark ? '#d61d1d' : '#f0e6e6');
