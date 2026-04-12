@@ -100,9 +100,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, horizon);
 
-  // Ground below horizon
-  ctx.fillStyle = scene.groundColor;
-  ctx.fillRect(0, horizon, W, H - horizon);
+  // Ground below horizon — split left/right for scene atmosphere
+  const sceneAny = scene as any;
+  ctx.fillStyle = sceneAny.groundLeft || '#23991a';
+  ctx.fillRect(0, horizon, W / 2, H - horizon);
+  ctx.fillStyle = sceneAny.groundRight || '#23991a';
+  ctx.fillRect(W / 2, horizon, W / 2, H - horizon);
 
   // Parallax scroll offset
   const parallaxOffset = (position * 0.3) % W;
@@ -193,12 +196,18 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const inFinishZone = segAbsDist >= destSegStart && segAbsDist <= destSeg;
 
     // Grass
-    ctx.fillStyle = inFinishZone
+    // Left ground
+    const leftGround = inFinishZone
       ? (dark ? '#0e8a2e' : '#18b840')
-      : (dark ? '#1a7a08' : '#23991a');
-    ctx.fillRect(0, y1, W, y2 - y1 + 1);
-
-    // Rumble strips - checkered in finish zone
+      : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
+    ctx.fillStyle = leftGround;
+    ctx.fillRect(0, y1, W / 2, y2 - y1 + 1);
+    // Right ground
+    const rightGround = inFinishZone
+      ? (dark ? '#0e8a2e' : '#18b840')
+      : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+    ctx.fillStyle = rightGround;
+    ctx.fillRect(W / 2, y1, W / 2, y2 - y1 + 1);
     const rumbleC = inFinishZone
       ? (dark ? '#ffffff' : '#222222')
       : (dark ? '#d61d1d' : '#f0e6e6');
@@ -223,27 +232,51 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       drawTrap(ctx, lineColor, cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
     }
 
-    // Roadside scenery - every 7 segments, on both sides
-    if (scene.scenery && scene.scenery.length > 0 && cur.idx % 7 === 0) {
+    // Roadside scenery - every 5 segments, side-specific with realistic scale
+    if (cur.idx % 5 === 0) {
       const distN = i;
-      const sceneryScale = Math.max(0.2, Math.min(1.8, 3.5 / (distN + 1.15)));
-      const fontSize = Math.max(10, Math.min(56, 40 * sceneryScale));
+      // Scale relative to road width for realistic proportions (car is ~90px, road ~prev.screenW*2)
+      const sceneryScale = Math.max(0.15, Math.min(2.2, 4.0 / (distN + 1.0)));
+      // Realistic size: a tree/house should be roughly car-sized (60-80px at close range)
+      const fontSize = Math.max(8, Math.min(72, 55 * sceneryScale));
       const sceneryY = Math.min(H - 10, prev.screenY);
-      // Pick emoji deterministically based on segment index
-      const emojiIdx = Math.abs(cur.idx * 7 + 3) % scene.scenery.length;
-      const emoji = scene.scenery[emojiIdx];
-      const emojiIdx2 = Math.abs(cur.idx * 13 + 5) % scene.scenery.length;
-      const emoji2 = scene.scenery[emojiIdx2];
 
       ctx.font = `${fontSize}px serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      // Left side
-      const leftX = prev.screenX - prev.screenW * 1.5;
-      ctx.fillText(emoji, leftX, sceneryY);
-      // Right side
-      const rightX = prev.screenX + prev.screenW * 1.5;
-      ctx.fillText(emoji2, rightX, sceneryY);
+
+      // Left side scenery
+      const leftEmojis = sceneAny.leftScenery || scene.scenery || [];
+      if (leftEmojis.length > 0) {
+        const emojiIdx = Math.abs(cur.idx * 7 + 3) % leftEmojis.length;
+        const leftX = prev.screenX - prev.screenW * (1.4 + (cur.idx % 3) * 0.3);
+        ctx.fillText(leftEmojis[emojiIdx], leftX, sceneryY);
+        // Additional deeper element every other time
+        if (cur.idx % 10 === 0 && distN > 3) {
+          const deepIdx = Math.abs(cur.idx * 11 + 7) % leftEmojis.length;
+          const deepX = prev.screenX - prev.screenW * (2.2 + (cur.idx % 2) * 0.4);
+          const deepSize = Math.max(6, fontSize * 0.7);
+          ctx.font = `${deepSize}px serif`;
+          ctx.fillText(leftEmojis[deepIdx], deepX, sceneryY - fontSize * 0.1);
+          ctx.font = `${fontSize}px serif`;
+        }
+      }
+
+      // Right side scenery
+      const rightEmojis = sceneAny.rightScenery || scene.scenery || [];
+      if (rightEmojis.length > 0) {
+        const emojiIdx2 = Math.abs(cur.idx * 13 + 5) % rightEmojis.length;
+        const rightX = prev.screenX + prev.screenW * (1.4 + (cur.idx % 3) * 0.3);
+        ctx.fillText(rightEmojis[emojiIdx2], rightX, sceneryY);
+        if (cur.idx % 10 === 5 && distN > 3) {
+          const deepIdx = Math.abs(cur.idx * 17 + 2) % rightEmojis.length;
+          const deepX = prev.screenX + prev.screenW * (2.2 + (cur.idx % 2) * 0.4);
+          const deepSize = Math.max(6, fontSize * 0.7);
+          ctx.font = `${deepSize}px serif`;
+          ctx.fillText(rightEmojis[deepIdx], deepX, sceneryY - fontSize * 0.1);
+          ctx.font = `${fontSize}px serif`;
+        }
+      }
     }
     if (segAbsDist >= destSeg - 2 && segAbsDist <= destSeg + 2) {
       const distN = i;
