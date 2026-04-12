@@ -35,7 +35,7 @@ export const GAME_CONFIG = {
   
   // Delivery distance (in segments)
   deliveryDistance: 300,
-  destinationVisibleDistance: 28, // how many segments before finish the destination appears
+  destinationVisibleDistance: 40, // how many segments before finish the destination appears
   
   // Delivery types (extensible)
   deliveryTypes: [
