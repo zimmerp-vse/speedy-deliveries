@@ -100,9 +100,12 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, horizon);
 
-  // Ground below horizon
-  ctx.fillStyle = scene.groundColor;
-  ctx.fillRect(0, horizon, W, H - horizon);
+  // Ground below horizon — split left/right for scene atmosphere
+  const sceneAny = scene as any;
+  ctx.fillStyle = sceneAny.groundLeft || '#23991a';
+  ctx.fillRect(0, horizon, W / 2, H - horizon);
+  ctx.fillStyle = sceneAny.groundRight || '#23991a';
+  ctx.fillRect(W / 2, horizon, W / 2, H - horizon);
 
   // Parallax scroll offset
   const parallaxOffset = (position * 0.3) % W;
