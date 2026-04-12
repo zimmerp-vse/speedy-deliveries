@@ -195,19 +195,33 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     const segAbsDist = prev.absDist;
     const inFinishZone = segAbsDist >= destSegStart && segAbsDist <= destSeg;
 
-    // Grass
-    // Left ground
+    // Ground — draw as trapezoids that follow road curvature
     const leftGround = inFinishZone
       ? (dark ? '#0e8a2e' : '#18b840')
       : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
-    ctx.fillStyle = leftGround;
-    ctx.fillRect(0, y1, W / 2, y2 - y1 + 1);
-    // Right ground
     const rightGround = inFinishZone
       ? (dark ? '#0e8a2e' : '#18b840')
       : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+
+    // Left ground: from screen left edge to road left edge (follows curve)
+    ctx.fillStyle = leftGround;
+    ctx.beginPath();
+    ctx.moveTo(0, y1);
+    ctx.lineTo(cur.screenX - cur.screenW * 1.2, y1);
+    ctx.lineTo(prev.screenX - prev.screenW * 1.2, y2 + 1);
+    ctx.lineTo(0, y2 + 1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right ground: from road right edge to screen right edge (follows curve)
     ctx.fillStyle = rightGround;
-    ctx.fillRect(W / 2, y1, W / 2, y2 - y1 + 1);
+    ctx.beginPath();
+    ctx.moveTo(cur.screenX + cur.screenW * 1.2, y1);
+    ctx.lineTo(W, y1);
+    ctx.lineTo(W, y2 + 1);
+    ctx.lineTo(prev.screenX + prev.screenW * 1.2, y2 + 1);
+    ctx.closePath();
+    ctx.fill();
     const rumbleC = inFinishZone
       ? (dark ? '#ffffff' : '#222222')
       : (dark ? '#d61d1d' : '#f0e6e6');
@@ -274,7 +288,8 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
         }
       }
     }
-    if (segAbsDist >= destSeg - 2 && segAbsDist <= destSeg + 2) {
+    // Destination marker — visible over a wider range
+    if (segAbsDist >= destSeg - 12 && segAbsDist <= destSeg + 2) {
       const distN = i;
       const scale = Math.max(0.3, Math.min(2.0, 4.0 / (distN + 1.15)));
       const destX = prev.screenX;
