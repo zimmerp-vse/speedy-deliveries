@@ -84,13 +84,19 @@ export class GameEngine {
   isCrashScene(): boolean { return this.state.isAccident && this.state.crashTimer > 0 && !this.state.crashSkipped; }
 
   startRound() {
+    // Clear any pending state from previous round
+    if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
+    if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = 0; }
+    this.pendingCelebrationResult = null;
+    this.pendingCrashResult = null;
+    this.running = false;
+
     this.currentRound++;
     this.state = this.createInitialState(this.currentRound - 1);
-    this.pendingCelebrationResult = null;
     this.onCelebrationChange?.(false);
     this.roundStartTime = performance.now();
     this.cruiseEnabled = false;
-    this.lastSpawnSegment = 0;
+    this.lastSpawnSegment = -1;
     this.running = true;
     this.lastTime = performance.now();
     this.loop();
