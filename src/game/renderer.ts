@@ -315,33 +315,62 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     const segAbsDist = prev.absDist;
     const inFinishZone = segAbsDist >= destSegStart && segAbsDist <= destSeg;
 
-    // Ground — draw as trapezoids that follow road curvature
-    const leftGround = inFinishZone
-      ? (dark ? '#0e8a2e' : '#18b840')
-      : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
-    const rightGround = inFinishZone
-      ? (dark ? '#0e8a2e' : '#18b840')
-      : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+    // Ground — draw terrain bands that follow road curvature
+    const leftBands = (sceneAny.leftBands as [string,string,number][] | undefined);
+    const rightBands = (sceneAny.rightBands as [string,string,number][] | undefined);
 
-    // Left ground: from screen left edge to road left edge (follows curve)
-    ctx.fillStyle = leftGround;
-    ctx.beginPath();
-    ctx.moveTo(0, y1);
-    ctx.lineTo(cur.screenX - cur.screenW * 1.2, y1);
-    ctx.lineTo(prev.screenX - prev.screenW * 1.2, y2 + 1);
-    ctx.lineTo(0, y2 + 1);
-    ctx.closePath();
-    ctx.fill();
+    if (leftBands && !inFinishZone) {
+      // Draw bands from outermost to innermost (painter's order)
+      for (let b = leftBands.length - 1; b >= 0; b--) {
+        const [col, colAlt, wMult] = leftBands[b];
+        ctx.fillStyle = dark ? col : colAlt;
+        ctx.beginPath();
+        ctx.moveTo(0, y1);
+        ctx.lineTo(cur.screenX - cur.screenW * wMult, y1);
+        ctx.lineTo(prev.screenX - prev.screenW * wMult, y2 + 1);
+        ctx.lineTo(0, y2 + 1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      const leftGround = inFinishZone
+        ? (dark ? '#0e8a2e' : '#18b840')
+        : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
+      ctx.fillStyle = leftGround;
+      ctx.beginPath();
+      ctx.moveTo(0, y1);
+      ctx.lineTo(cur.screenX - cur.screenW * 1.2, y1);
+      ctx.lineTo(prev.screenX - prev.screenW * 1.2, y2 + 1);
+      ctx.lineTo(0, y2 + 1);
+      ctx.closePath();
+      ctx.fill();
+    }
 
-    // Right ground: from road right edge to screen right edge (follows curve)
-    ctx.fillStyle = rightGround;
-    ctx.beginPath();
-    ctx.moveTo(cur.screenX + cur.screenW * 1.2, y1);
-    ctx.lineTo(W, y1);
-    ctx.lineTo(W, y2 + 1);
-    ctx.lineTo(prev.screenX + prev.screenW * 1.2, y2 + 1);
-    ctx.closePath();
-    ctx.fill();
+    if (rightBands && !inFinishZone) {
+      for (let b = rightBands.length - 1; b >= 0; b--) {
+        const [col, colAlt, wMult] = rightBands[b];
+        ctx.fillStyle = dark ? col : colAlt;
+        ctx.beginPath();
+        ctx.moveTo(cur.screenX + cur.screenW * wMult, y1);
+        ctx.lineTo(W, y1);
+        ctx.lineTo(W, y2 + 1);
+        ctx.lineTo(prev.screenX + prev.screenW * wMult, y2 + 1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else {
+      const rightGround = inFinishZone
+        ? (dark ? '#0e8a2e' : '#18b840')
+        : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+      ctx.fillStyle = rightGround;
+      ctx.beginPath();
+      ctx.moveTo(cur.screenX + cur.screenW * 1.2, y1);
+      ctx.lineTo(W, y1);
+      ctx.lineTo(W, y2 + 1);
+      ctx.lineTo(prev.screenX + prev.screenW * 1.2, y2 + 1);
+      ctx.closePath();
+      ctx.fill();
+    }
     const rumbleC = inFinishZone
       ? (dark ? '#ffffff' : '#222222')
       : (dark ? '#d61d1d' : '#f0e6e6');
