@@ -1,5 +1,5 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
-import { GameState, CelebrationParticle, createSegments, spawnObstacles, render } from './renderer';
+import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
 
 export interface Controls {
   left: boolean;
@@ -20,6 +20,8 @@ export class GameEngine {
   private cruiseEnabled: boolean = false;
   private lastSpawnSegment: number = 0;
   private pendingCelebrationResult: RoundResult | null = null;
+  private pendingCrashResult: RoundResult | null = null;
+  private crashTimeout: ReturnType<typeof setTimeout> | null = null;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -79,6 +81,7 @@ export class GameEngine {
   getCurrentRound(): number { return this.currentRound; }
   getMoney(): number { return this.gameData.totalMoney; }
   isCelebrating(): boolean { return this.state.celebrating; }
+  isCrashScene(): boolean { return this.state.isAccident && this.state.crashTimer > 0 && !this.state.crashSkipped; }
 
   startRound() {
     this.currentRound++;
@@ -105,6 +108,13 @@ export class GameEngine {
   skipCelebration() {
     if (!this.state.celebrating) return;
     this.finishCelebration();
+  }
+
+  skipCrash() {
+    if (!this.state.isAccident || this.state.crashSkipped) return;
+    this.state.crashSkipped = true;
+    if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
+    this.finishCrash();
   }
 
   private loop = () => {
