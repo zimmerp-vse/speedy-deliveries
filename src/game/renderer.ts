@@ -207,10 +207,15 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   if (state.collidedSprite) {
     const cx = W / 2 + state.steering * 30;
     const objX = cx + (Math.sin(t * 2) * 5);
-    ctx.font = '42px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(state.collidedSprite.emoji, objX, H - 65);
+    if (state.collidedSprite.type === 'car') {
+      // Draw a proper car at crash scale
+      drawObstacleCar(ctx, objX, H - 55, 1.2);
+    } else {
+      ctx.font = '72px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(state.collidedSprite.emoji, objX, H - 50);
+    }
   }
 
   // Damage cracks on windshield
@@ -558,6 +563,24 @@ function drawCelebrationEffects(ctx: CanvasRenderingContext2D, state: GameState,
     ctx.shadowBlur = 0;
     ctx.restore();
   }
+}
+
+// Size hints for emojis so buildings are large and small items are small relative to the car
+function getEmojiSizeHint(emoji: string): number {
+  // Large structures
+  if ('🏠🏡🏘️🏢🏬🏨🏗️🏪🏭🏚️⛪🛖🏕️🏠'.includes(emoji)) return 1.6;
+  // Mountains, big landmarks
+  if ('🏔️⛰️🗻🌋🏙️🌃🏝️'.includes(emoji)) return 1.4;
+  // Trees (tall)
+  if ('🌲🌳🌴'.includes(emoji)) return 1.5;
+  // Medium objects
+  if ('⛵🚢🏄⛱️🚏'.includes(emoji)) return 1.1;
+  // Small items — shells, flowers, animals, skulls
+  if ('🐚🌺🦎💀🦂🍂🍁🐠🦌🦜🍍❄️'.includes(emoji)) return 0.5;
+  // Water effects (flat, not tall)
+  if ('🌊💨🔥'.includes(emoji)) return 0.6;
+  // Default
+  return 0.9;
 }
 
 function drawTrap(
