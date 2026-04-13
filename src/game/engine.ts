@@ -356,8 +356,21 @@ export class GameEngine {
     }
   }
 
+  private finishCrash() {
+    const result = this.pendingCrashResult;
+    this.pendingCrashResult = null;
+    this.running = false;
+
+    if (!result) return;
+
+    if (this.currentRound >= GAME_CONFIG.totalRounds) {
+      this.onGameEnd?.({ ...this.gameData });
+    } else {
+      this.onRoundEnd?.(result, { ...this.gameData });
+    }
+  }
+
   private endRound(success: boolean, accidentType?: AccidentType) {
-    if (!success) this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
     
     let moneyEarned = 0, moneyLost = 0;
@@ -383,14 +396,15 @@ export class GameEngine {
       this.pendingCelebrationResult = result;
       return;
     }
-    
-    setTimeout(() => {
-      if (this.currentRound >= GAME_CONFIG.totalRounds) {
-        this.onGameEnd?.(this.gameData);
-      } else {
-        this.onRoundEnd?.(result, this.gameData);
+
+    // Crash: keep the loop running so crash scene renders, auto-skip after 4s
+    this.pendingCrashResult = result;
+    this.crashTimeout = setTimeout(() => {
+      if (!this.state.crashSkipped) {
+        this.state.crashSkipped = true;
+        this.finishCrash();
       }
-    }, 1500);
+    }, 4000);
   }
 
   private renderFrame() {
@@ -400,5 +414,8 @@ export class GameEngine {
     render(this.ctx, this.state, w, h);
   }
 
-  destroy() { this.stop(); }
+  destroy() { 
+    this.stop();
+    if (this.crashTimeout) clearTimeout(this.crashTimeout);
+  }
 }
