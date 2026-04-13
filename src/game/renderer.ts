@@ -9,6 +9,16 @@ export interface CelebrationParticle {
   alpha: number;
 }
 
+export interface SmokeParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  color: string;
+}
+
 export interface GameState {
   position: number;
   speed: number;
@@ -24,12 +34,19 @@ export interface GameState {
   timeRemaining: number;
   // Celebration
   celebrating: boolean;
-  celebrationTimer: number; // seconds remaining in celebration
+  celebrationTimer: number;
   celebrationParticles: CelebrationParticle[];
   celebrationFlashAlpha: number;
   // Delivery type for this round
   deliveryType: typeof GAME_CONFIG.deliveryTypes[0];
-  gameTime: number; // total elapsed time for animations
+  gameTime: number;
+  // Tire effects
+  tireSmoke: SmokeParticle[];
+  // Crash effects
+  crashSmoke: SmokeParticle[];
+  crashTimer: number; // seconds since crash
+  crashSkipped: boolean;
+  collidedSprite?: { type: string; emoji: string; screenX?: number };
 }
 
 export interface RoadSegment {
