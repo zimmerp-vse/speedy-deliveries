@@ -9,6 +9,16 @@ export interface CelebrationParticle {
   alpha: number;
 }
 
+export interface SmokeParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  alpha: number;
+  color: string;
+}
+
 export interface GameState {
   position: number;
   speed: number;
@@ -24,12 +34,19 @@ export interface GameState {
   timeRemaining: number;
   // Celebration
   celebrating: boolean;
-  celebrationTimer: number; // seconds remaining in celebration
+  celebrationTimer: number;
   celebrationParticles: CelebrationParticle[];
   celebrationFlashAlpha: number;
   // Delivery type for this round
   deliveryType: typeof GAME_CONFIG.deliveryTypes[0];
-  gameTime: number; // total elapsed time for animations
+  gameTime: number;
+  // Tire effects
+  tireSmoke: SmokeParticle[];
+  // Crash effects
+  crashSmoke: SmokeParticle[];
+  crashTimer: number; // seconds since crash
+  crashSkipped: boolean;
+  collidedSprite?: { type: string; emoji: string; screenX?: number };
 }
 
 export interface RoadSegment {
@@ -156,6 +173,104 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
     }
     ctx.globalAlpha = 1;
   }
+function drawSmokeParticles(ctx: CanvasRenderingContext2D, particles: SmokeParticle[]) {
+  for (const p of particles) {
+    if (p.alpha <= 0) continue;
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
+  const t = state.crashTimer;
+
+  // Screen shake
+  const shakeX = t < 0.5 ? (Math.random() - 0.5) * 12 * (1 - t * 2) : 0;
+  const shakeY = t < 0.5 ? (Math.random() - 0.5) * 8 * (1 - t * 2) : 0;
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  // Red flash
+  if (t < 0.3) {
+    ctx.fillStyle = `rgba(255,0,0,${0.3 * (1 - t / 0.3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Hood smoke
+  drawSmokeParticles(ctx, state.crashSmoke);
+
+  // Collided object near the car
+  if (state.collidedSprite) {
+    const cx = W / 2 + state.steering * 30;
+    const objX = cx + (Math.sin(t * 2) * 5);
+    ctx.font = '42px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(state.collidedSprite.emoji, objX, H - 65);
+  }
+
+  // Damage cracks on windshield
+  const cx = W / 2 + state.steering * 30;
+  const wy = H - 68;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, wy + 5);
+  ctx.lineTo(cx - 2, wy + 15);
+  ctx.lineTo(cx + 5, wy + 8);
+  ctx.moveTo(cx + 3, wy + 5);
+  ctx.lineTo(cx + 10, wy + 18);
+  ctx.stroke();
+
+  // "CRASH!" text
+  if (t < 1.5) {
+    const scale = Math.min(1, t * 5);
+    ctx.save();
+    ctx.translate(W / 2, H * 0.3);
+    ctx.scale(scale, scale);
+    ctx.font = 'bold 52px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 4;
+    ctx.strokeText('💥 CRASH!', 0, 0);
+    ctx.fillStyle = '#ff3333';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 20;
+    ctx.fillText('💥 CRASH!', 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Angry passenger reaction text
+  if (t > 0.8) {
+    const reactions = GAME_CONFIG.accidentReactions;
+    const reactionIdx = Math.floor(state.position * 7) % reactions.length;
+    ctx.font = 'bold 16px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(reactions[reactionIdx], W / 2, H * 0.45);
+    ctx.fillText(reactions[reactionIdx], W / 2, H * 0.45);
+  }
+
+  // Skip hint
+  if (t > 1) {
+    ctx.globalAlpha = 0.5 + Math.sin(t * 3) * 0.3;
+    ctx.font = '12px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText('PRESS SPACE TO SKIP', W / 2, H * 0.55);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
 
 
   const lines: { screenY: number; screenX: number; screenW: number; idx: number; absDist: number }[] = [];
@@ -343,6 +458,14 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
 
   // Player car
   drawCar(ctx, state, W, H);
+
+  // Tire smoke
+  drawSmokeParticles(ctx, state.tireSmoke);
+
+  // Crash scene overlay
+  if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
+    drawCrashScene(ctx, state, W, H);
+  }
 
   // Delivery bar
   drawBar(ctx, state, W);
@@ -656,14 +779,27 @@ function drawPassenger(
     ctx.textBaseline = 'middle';
     ctx.fillText('😄', x, drawY + 4);
   } else if (isAccident) {
+    // Angry passenger hitting the driver
+    const hitAnim = Math.sin(gameTime * 12) * 4;
+    ctx.strokeStyle = '#fcd5a0';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    // Hitting arm toward driver (left = toward center)
+    ctx.beginPath();
+    ctx.moveTo(x - 4, drawY);
+    ctx.lineTo(x - 12 + hitAnim, drawY - 2 + Math.abs(hitAnim) * 0.5);
+    ctx.stroke();
+    // Other arm flailing
+    ctx.beginPath();
+    ctx.moveTo(x + 4, drawY);
+    ctx.lineTo(x + 8, drawY - 10 - hitAnim);
+    ctx.stroke();
+    // Angry face
     ctx.fillStyle = '#333';
-    ctx.font = '8px serif';
+    ctx.font = '10px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('>', x - 3, drawY - 4);
-    ctx.fillText('<', x + 3, drawY - 4);
-    ctx.fillStyle = '#c00';
-    ctx.fillText(type === 'man' ? '😤' : '😱', x, drawY + 6);
+    ctx.fillText(type === 'man' ? '😤' : '🤬', x, drawY + 4);
   } else {
     // Sunglasses
     ctx.fillStyle = '#111';

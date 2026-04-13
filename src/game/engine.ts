@@ -1,5 +1,5 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
-import { GameState, CelebrationParticle, createSegments, spawnObstacles, render } from './renderer';
+import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
 
 export interface Controls {
   left: boolean;
@@ -20,6 +20,8 @@ export class GameEngine {
   private cruiseEnabled: boolean = false;
   private lastSpawnSegment: number = 0;
   private pendingCelebrationResult: RoundResult | null = null;
+  private pendingCrashResult: RoundResult | null = null;
+  private crashTimeout: ReturnType<typeof setTimeout> | null = null;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -68,6 +70,10 @@ export class GameEngine {
       celebrationFlashAlpha: 0,
       deliveryType,
       gameTime: 0,
+      tireSmoke: [],
+      crashSmoke: [],
+      crashTimer: 0,
+      crashSkipped: false,
     };
   }
 
@@ -75,6 +81,7 @@ export class GameEngine {
   getCurrentRound(): number { return this.currentRound; }
   getMoney(): number { return this.gameData.totalMoney; }
   isCelebrating(): boolean { return this.state.celebrating; }
+  isCrashScene(): boolean { return this.state.isAccident && this.state.crashTimer > 0 && !this.state.crashSkipped; }
 
   startRound() {
     this.currentRound++;
@@ -103,6 +110,13 @@ export class GameEngine {
     this.finishCelebration();
   }
 
+  skipCrash() {
+    if (!this.state.isAccident || this.state.crashSkipped) return;
+    this.state.crashSkipped = true;
+    if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
+    this.finishCrash();
+  }
+
   private loop = () => {
     if (!this.running) return;
     const now = performance.now();
@@ -118,6 +132,32 @@ export class GameEngine {
     const s = this.state;
     
     s.gameTime += dt;
+
+    // Update all smoke particles (tire + crash)
+    this.updateSmoke(s.tireSmoke, dt);
+    this.updateSmoke(s.crashSmoke, dt);
+    
+    // Crash scene — keep rendering but don't move
+    if (s.isAccident && !s.crashSkipped) {
+      s.crashTimer += dt;
+      // Spawn crash smoke from hood
+      if (s.crashTimer < 4 && Math.random() < 0.3) {
+        const W = this.canvas.width;
+        s.crashSmoke.push({
+          x: W / 2 + s.steering * 30 + (Math.random() - 0.5) * 20,
+          y: this.canvas.height - 68 - Math.random() * 10,
+          vx: (Math.random() - 0.5) * 30,
+          vy: -20 - Math.random() * 40,
+          size: 6 + Math.random() * 10,
+          alpha: 0.7 + Math.random() * 0.3,
+          color: Math.random() < 0.3 ? '#333' : '#888',
+        });
+      }
+      this.onSpeedUpdate?.(0);
+      this.onMoneyUpdate?.(this.gameData.totalMoney);
+      this.onTimeUpdate?.(s.timeRemaining);
+      return;
+    }
     
     if (s.celebrating) {
       s.celebrationTimer -= dt;
@@ -172,6 +212,24 @@ export class GameEngine {
       
       s.playerX = Math.max(-2.5, Math.min(2.5, s.playerX));
     }
+
+    // Tire smoke when steering hard at speed
+    if (s.speed > 30 && Math.abs(steerDir) > 0) {
+      const W = this.canvas.width;
+      const cx = W / 2 + s.steering * 30;
+      const cy = this.canvas.height - 4;
+      for (let i = 0; i < 2; i++) {
+        s.tireSmoke.push({
+          x: cx + (steerDir > 0 ? -38 : 38) + (Math.random() - 0.5) * 10,
+          y: cy - Math.random() * 6,
+          vx: -steerDir * (10 + Math.random() * 20),
+          vy: -5 - Math.random() * 15,
+          size: 4 + Math.random() * 6,
+          alpha: 0.4 + Math.random() * 0.3,
+          color: '#ccc',
+        });
+      }
+    }
     
     s.hornActive = this.controls.horn;
     
@@ -224,6 +282,17 @@ export class GameEngine {
     this.onTimeUpdate?.(s.timeRemaining);
   }
 
+  private updateSmoke(particles: SmokeParticle[], dt: number) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.size += dt * 8;
+      p.alpha -= dt * 0.8;
+      if (p.alpha <= 0) particles.splice(i, 1);
+    }
+  }
+
   private checkCollisions(playerSegIdx: number) {
     const s = this.state;
     if (s.isAccident || s.isDelivery || s.speed <= 10) return;
@@ -244,10 +313,13 @@ export class GameEngine {
       return;
     }
 
+    // Store collided sprite info for rendering
+    s.collidedSprite = { type: seg.sprite.type, emoji: seg.sprite.emoji };
     seg.sprite.active = false;
     s.isAccident = true;
+    s.crashTimer = 0;
     s.speed = 0;
-    this.endRound(false, seg.sprite.type);
+    this.endRound(false, seg.sprite.type as AccidentType);
   }
 
   private spawnCelebrationParticles() {
@@ -284,8 +356,21 @@ export class GameEngine {
     }
   }
 
+  private finishCrash() {
+    const result = this.pendingCrashResult;
+    this.pendingCrashResult = null;
+    this.running = false;
+
+    if (!result) return;
+
+    if (this.currentRound >= GAME_CONFIG.totalRounds) {
+      this.onGameEnd?.({ ...this.gameData });
+    } else {
+      this.onRoundEnd?.(result, { ...this.gameData });
+    }
+  }
+
   private endRound(success: boolean, accidentType?: AccidentType) {
-    if (!success) this.running = false;
     const timeMs = performance.now() - this.roundStartTime;
     
     let moneyEarned = 0, moneyLost = 0;
@@ -311,14 +396,15 @@ export class GameEngine {
       this.pendingCelebrationResult = result;
       return;
     }
-    
-    setTimeout(() => {
-      if (this.currentRound >= GAME_CONFIG.totalRounds) {
-        this.onGameEnd?.(this.gameData);
-      } else {
-        this.onRoundEnd?.(result, this.gameData);
+
+    // Crash: keep the loop running so crash scene renders, auto-skip after 4s
+    this.pendingCrashResult = result;
+    this.crashTimeout = setTimeout(() => {
+      if (!this.state.crashSkipped) {
+        this.state.crashSkipped = true;
+        this.finishCrash();
       }
-    }, 1500);
+    }, 4000);
   }
 
   private renderFrame() {
@@ -328,5 +414,8 @@ export class GameEngine {
     render(this.ctx, this.state, w, h);
   }
 
-  destroy() { this.stop(); }
+  destroy() { 
+    this.stop();
+    if (this.crashTimeout) clearTimeout(this.crashTimeout);
+  }
 }
