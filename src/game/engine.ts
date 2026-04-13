@@ -68,6 +68,10 @@ export class GameEngine {
       celebrationFlashAlpha: 0,
       deliveryType,
       gameTime: 0,
+      tireSmoke: [],
+      crashSmoke: [],
+      crashTimer: 0,
+      crashSkipped: false,
     };
   }
 
