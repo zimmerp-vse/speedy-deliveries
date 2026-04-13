@@ -77,16 +77,16 @@ export function DrivingGame() {
     };
     
     const down = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && engine.isCelebrating()) {
+      if (e.code === 'Space') {
         e.preventDefault();
-        engine.skipCelebration();
-        return;
+        if (engine.isCelebrating()) { engine.skipCelebration(); return; }
+        if (engine.isCrashScene()) { engine.skipCrash(); return; }
       }
       onKey(e, true);
     };
 
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && engine.isCelebrating()) {
+      if (e.code === 'Space' && (engine.isCelebrating() || engine.isCrashScene())) {
         e.preventDefault();
         return;
       }

@@ -779,14 +779,27 @@ function drawPassenger(
     ctx.textBaseline = 'middle';
     ctx.fillText('😄', x, drawY + 4);
   } else if (isAccident) {
+    // Angry passenger hitting the driver
+    const hitAnim = Math.sin(gameTime * 12) * 4;
+    ctx.strokeStyle = '#fcd5a0';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    // Hitting arm toward driver (left = toward center)
+    ctx.beginPath();
+    ctx.moveTo(x - 4, drawY);
+    ctx.lineTo(x - 12 + hitAnim, drawY - 2 + Math.abs(hitAnim) * 0.5);
+    ctx.stroke();
+    // Other arm flailing
+    ctx.beginPath();
+    ctx.moveTo(x + 4, drawY);
+    ctx.lineTo(x + 8, drawY - 10 - hitAnim);
+    ctx.stroke();
+    // Angry face
     ctx.fillStyle = '#333';
-    ctx.font = '8px serif';
+    ctx.font = '10px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('>', x - 3, drawY - 4);
-    ctx.fillText('<', x + 3, drawY - 4);
-    ctx.fillStyle = '#c00';
-    ctx.fillText(type === 'man' ? '😤' : '😱', x, drawY + 6);
+    ctx.fillText(type === 'man' ? '😤' : '🤬', x, drawY + 4);
   } else {
     // Sunglasses
     ctx.fillStyle = '#111';
