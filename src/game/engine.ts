@@ -297,29 +297,31 @@ export class GameEngine {
     const s = this.state;
     if (s.isAccident || s.isDelivery || s.speed <= 10) return;
 
-    const approach = s.position - Math.floor(s.position);
-    if (approach < 0.72) return;
+    // Check current and next few segments to prevent skipping at high speed
+    const checkRange = Math.max(2, Math.ceil(s.speed * 0.016 * 0.22) + 1);
+    for (let offset = 0; offset <= checkRange; offset++) {
+      const idx = (playerSegIdx + offset) % s.segments.length;
+      const seg = s.segments[idx];
+      if (!seg.sprite || !seg.sprite.active) continue;
 
-    const nextIdx = (playerSegIdx + 1) % s.segments.length;
-    const seg = s.segments[nextIdx];
-    if (!seg.sprite || !seg.sprite.active) return;
+      const obstacleX = seg.sprite.offset * 4.2;
+      const lateralDist = Math.abs(s.playerX - obstacleX);
+      if (lateralDist > 0.65) continue;
 
-    const obstacleX = seg.sprite.offset * 4.2;
-    const lateralDist = Math.abs(s.playerX - obstacleX);
-    if (lateralDist > 0.65) return;
+      if (seg.sprite.type === 'pedestrian' && s.hornActive) {
+        seg.sprite.active = false;
+        continue;
+      }
 
-    if (seg.sprite.type === 'pedestrian' && s.hornActive) {
+      // Store collided sprite info for rendering
+      s.collidedSprite = { type: seg.sprite.type, emoji: seg.sprite.emoji };
       seg.sprite.active = false;
+      s.isAccident = true;
+      s.crashTimer = 0;
+      s.speed = 0;
+      this.endRound(false, seg.sprite.type as AccidentType);
       return;
     }
-
-    // Store collided sprite info for rendering
-    s.collidedSprite = { type: seg.sprite.type, emoji: seg.sprite.emoji };
-    seg.sprite.active = false;
-    s.isAccident = true;
-    s.crashTimer = 0;
-    s.speed = 0;
-    this.endRound(false, seg.sprite.type as AccidentType);
   }
 
   private spawnCelebrationParticles() {
