@@ -414,8 +414,9 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     // Landscape scenery - spread across the full ground, not just road edge
     if (cur.idx % 3 === 0) {
       const distN = i;
-      const baseScale = Math.max(0.15, Math.min(2.2, 4.0 / (distN + 1.0)));
-      const sceneryY = Math.min(H - 10, prev.screenY);
+      // Much steeper scale curve so near objects are huge like OutRun
+      const baseScale = Math.max(0.12, Math.min(3.5, 6.0 / (distN + 0.8)));
+      const sceneryY = Math.min(H - 14, prev.screenY);
 
       const leftEmojis = sceneAny.leftScenery || scene.scenery || [];
       const rightEmojis = sceneAny.rightScenery || scene.scenery || [];
@@ -423,16 +424,16 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       // Multiple placement columns on each side — spread to screen edges
       const placements = [
         { mult: 1.25, sizeF: 1.0, freq: 3, seed: 7 },    // roadside
-        { mult: 1.8,  sizeF: 0.9, freq: 3, seed: 11 },   // near
-        { mult: 2.8,  sizeF: 0.75, freq: 3, seed: 17 },   // mid
-        { mult: 4.0,  sizeF: 0.6, freq: 6, seed: 23 },   // far
-        { mult: 6.0,  sizeF: 0.45, freq: 6, seed: 31 },   // very far
-        { mult: 9.0,  sizeF: 0.35, freq: 9, seed: 37 },   // screen edge
+        { mult: 1.8,  sizeF: 0.85, freq: 3, seed: 11 },   // near
+        { mult: 2.8,  sizeF: 0.65, freq: 3, seed: 17 },   // mid
+        { mult: 4.0,  sizeF: 0.5, freq: 6, seed: 23 },   // far
+        { mult: 6.0,  sizeF: 0.38, freq: 6, seed: 31 },   // very far
+        { mult: 9.0,  sizeF: 0.28, freq: 9, seed: 37 },   // screen edge
       ];
 
       for (const p of placements) {
         if (cur.idx % p.freq !== 0) continue;
-        const jitterY = ((cur.idx * p.seed) % 7 - 3) * baseScale * 0.5;
+        const jitterY = ((cur.idx * p.seed) % 7 - 3) * baseScale * 0.3;
 
         // Left side
         if (leftEmojis.length > 0) {
@@ -442,7 +443,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 3) % leftEmojis.length;
             const emoji = leftEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(90, 55 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -458,7 +459,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 11) % rightEmojis.length;
             const emoji = rightEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(90, 55 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -612,20 +613,20 @@ function drawCelebrationEffects(ctx: CanvasRenderingContext2D, state: GameState,
 
 // Size hints for emojis so buildings are large and small items are small relative to the car
 function getEmojiSizeHint(emoji: string): number {
+  // Trees (tall, should tower over car like OutRun palm trees)
+  if ('🌲🌳🌴'.includes(emoji)) return 2.0;
   // Large structures
-  if ('🏠🏡🏘️🏢🏬🏨🏗️🏪🏭🏚️⛪🛖🏕️🏠'.includes(emoji)) return 1.6;
+  if ('🏠🏡🏘️🏢🏬🏨🏗️🏪🏭🏚️⛪🛖🏕️🏠'.includes(emoji)) return 1.8;
   // Mountains, big landmarks
-  if ('🏔️⛰️🗻🌋🏙️🌃🏝️'.includes(emoji)) return 1.4;
-  // Trees (tall)
-  if ('🌲🌳🌴'.includes(emoji)) return 1.5;
+  if ('🏔️⛰️🗻🌋🏙️🌃🏝️'.includes(emoji)) return 1.6;
   // Medium objects
-  if ('⛵🚢🏄⛱️🚏'.includes(emoji)) return 1.1;
+  if ('⛵🚢🏄⛱️🚏'.includes(emoji)) return 1.0;
   // Small items — shells, flowers, animals, skulls
-  if ('🐚🌺🦎💀🦂🍂🍁🐠🦌🦜🍍❄️'.includes(emoji)) return 0.5;
+  if ('🐚🌺🦎💀🦂🍂🍁🐠🦌🦜🍍❄️'.includes(emoji)) return 0.45;
   // Water effects (flat, not tall)
-  if ('🌊💨🔥'.includes(emoji)) return 0.6;
+  if ('🌊💨🔥'.includes(emoji)) return 0.5;
   // Default
-  return 0.9;
+  return 0.8;
 }
 
 function drawTrap(
@@ -700,9 +701,9 @@ function shadeColor(hex: string, percent: number): string {
 }
 
 function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
-  const cx = W / 2 + state.steering * 30;
-  const cy = H - 8;
-  const cw = 90, ch = 60;
+  const cx = W / 2 + state.steering * 40;
+  const cy = H - 10;
+  const cw = 130, ch = 85;
 
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
