@@ -443,7 +443,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 3) % leftEmojis.length;
             const emoji = leftEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -459,7 +459,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 11) % rightEmojis.length;
             const emoji = rightEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
