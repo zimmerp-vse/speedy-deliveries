@@ -505,14 +505,14 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     // Sprites
     if (seg.sprite?.active) {
       const distN = i;
-      const spriteScale = Math.max(0.22, Math.min(1.6, 3.4 / (distN + 1.15)));
+      const spriteScale = Math.max(0.22, Math.min(2.2, 5.0 / (distN + 0.8)));
       const spriteX = prev.screenX + prev.screenW * seg.sprite.offset;
-      const spriteY = Math.min(H - 18, prev.screenY);
+      const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
         drawObstacleCar(ctx, spriteX, spriteY, spriteScale);
       } else {
-        const fSize = Math.max(16, Math.min(88, 58 * spriteScale));
+        const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
         ctx.font = `${fSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
