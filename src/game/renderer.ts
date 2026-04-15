@@ -203,19 +203,35 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   // Hood smoke
   drawSmokeParticles(ctx, state.crashSmoke);
 
-  // Collided object near the car
+  // Collided object — bumped ahead on impact then tumbles away
   if (state.collidedSprite) {
     const cx = W / 2 + state.steering * 30;
-    const objX = cx + (Math.sin(t * 2) * 5);
+    // Object launches forward (up the screen = toward horizon) and slightly sideways
+    const launchProgress = Math.min(t / 1.5, 1); // 0→1 over 1.5s
+    const eased = 1 - Math.pow(1 - launchProgress, 2); // ease-out
+    const bumpY = -eased * H * 0.35; // moves up toward horizon
+    const bumpX = eased * 60 * (state.steering > 0 ? 1 : -1); // tumbles sideways
+    const tumbleRotation = t * 4; // spin as it flies
+    const shrink = Math.max(0.2, 1 - eased * 0.7); // gets smaller as it recedes
+    const fadeAlpha = Math.max(0, 1 - launchProgress * 0.8);
+
+    ctx.save();
+    ctx.globalAlpha = fadeAlpha;
+    const objX = cx + bumpX + (Math.sin(t * 3) * 3);
+    const objY = H - 55 + bumpY;
+    ctx.translate(objX, objY);
+    ctx.rotate(Math.sin(tumbleRotation) * 0.3);
+    ctx.scale(shrink, shrink);
+
     if (state.collidedSprite.type === 'car') {
-      // Draw a proper car at crash scale
-      drawObstacleCar(ctx, objX, H - 55, 1.2);
+      drawObstacleCar(ctx, 0, 0, 1.2);
     } else {
       ctx.font = '72px serif';
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(state.collidedSprite.emoji, objX, H - 50);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(state.collidedSprite.emoji, 0, 0);
     }
+    ctx.restore();
   }
 
   // Damage cracks on windshield
