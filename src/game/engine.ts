@@ -150,8 +150,8 @@ export class GameEngine {
       if (s.crashTimer < 4 && Math.random() < 0.3) {
         const W = this.canvas.width;
         s.crashSmoke.push({
-          x: W / 2 + s.steering * 30 + (Math.random() - 0.5) * 20,
-          y: this.canvas.height - 68 - Math.random() * 10,
+          x: W / 2 + s.steering * 40 + (Math.random() - 0.5) * 20,
+          y: this.canvas.height - 90 - Math.random() * 10,
           vx: (Math.random() - 0.5) * 30,
           vy: -20 - Math.random() * 40,
           size: 6 + Math.random() * 10,
@@ -222,7 +222,7 @@ export class GameEngine {
     // Tire smoke when steering hard at speed
     if (s.speed > 30 && Math.abs(steerDir) > 0) {
       const W = this.canvas.width;
-      const cx = W / 2 + s.steering * 30;
+      const cx = W / 2 + s.steering * 40;
       const cy = this.canvas.height - 4;
       for (let i = 0; i < 2; i++) {
         s.tireSmoke.push({

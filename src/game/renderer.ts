@@ -205,7 +205,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
 
   // Collided object — bumped ahead on impact then tumbles away
   if (state.collidedSprite) {
-    const cx = W / 2 + state.steering * 30;
+    const cx = W / 2 + state.steering * 40;
     // Object launches forward (up the screen = toward horizon) and slightly sideways
     const launchProgress = Math.min(t / 1.5, 1); // 0→1 over 1.5s
     const eased = 1 - Math.pow(1 - launchProgress, 2); // ease-out
@@ -235,8 +235,8 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   }
 
   // Damage cracks on windshield
-  const cx = W / 2 + state.steering * 30;
-  const wy = H - 68;
+  const cx = W / 2 + state.steering * 40;
+  const wy = H - 90;
   ctx.strokeStyle = 'rgba(255,255,255,0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
