@@ -645,7 +645,7 @@ function drawTrap(
 }
 
 function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
-  const w = 58 * scale, h = 42 * scale;
+  const w = 72 * scale, h = 52 * scale;
   const cx = x, cy = y;
 
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
