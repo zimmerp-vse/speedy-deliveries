@@ -421,14 +421,14 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const leftEmojis = sceneAny.leftScenery || scene.scenery || [];
       const rightEmojis = sceneAny.rightScenery || scene.scenery || [];
 
-      // Multiple placement columns on each side — spread to screen edges
+      // Multiple placement columns on each side — all same size at same depth
       const placements = [
-        { mult: 1.25, sizeF: 1.0, freq: 3, seed: 7 },    // roadside
-        { mult: 1.8,  sizeF: 0.85, freq: 3, seed: 11 },   // near
-        { mult: 2.8,  sizeF: 0.65, freq: 3, seed: 17 },   // mid
-        { mult: 4.0,  sizeF: 0.5, freq: 6, seed: 23 },   // far
-        { mult: 6.0,  sizeF: 0.38, freq: 6, seed: 31 },   // very far
-        { mult: 9.0,  sizeF: 0.28, freq: 9, seed: 37 },   // screen edge
+        { mult: 1.25, freq: 3, seed: 7 },    // roadside
+        { mult: 1.8,  freq: 3, seed: 11 },   // near
+        { mult: 2.8,  freq: 3, seed: 17 },   // mid
+        { mult: 4.0,  freq: 6, seed: 23 },   // far
+        { mult: 6.0,  freq: 6, seed: 31 },   // very far
+        { mult: 9.0,  freq: 9, seed: 37 },   // screen edge
       ];
 
       for (const p of placements) {
@@ -443,7 +443,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 3) % leftEmojis.length;
             const emoji = leftEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -459,7 +459,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 11) % rightEmojis.length;
             const emoji = rightEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * p.sizeF * sizeHint));
+            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
