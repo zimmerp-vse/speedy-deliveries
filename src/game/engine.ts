@@ -223,7 +223,7 @@ export class GameEngine {
     if (s.speed > 30 && Math.abs(steerDir) > 0) {
       const W = this.canvas.width;
       const cx = W / 2 + s.steering * 40;
-      const cy = this.canvas.height - 4;
+      const cy = this.canvas.height - 10;
       for (let i = 0; i < 2; i++) {
         s.tireSmoke.push({
           x: cx + (steerDir > 0 ? -38 : 38) + (Math.random() - 0.5) * 10,

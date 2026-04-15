@@ -744,8 +744,8 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
 
   // Passengers - celebrating if delivering
   const celebrating = state.celebrating;
-  drawPassenger(ctx, cx - 10, cy - ch + 2, 'man', state.isAccident, celebrating, state.gameTime);
-  drawPassenger(ctx, cx + 10, cy - ch + 2, 'woman', state.isAccident, celebrating, state.gameTime);
+  drawPassenger(ctx, cx - 14, cy - ch + 4, 'man', state.isAccident, celebrating, state.gameTime);
+  drawPassenger(ctx, cx + 14, cy - ch + 4, 'woman', state.isAccident, celebrating, state.gameTime);
 
   // Side mirrors
   ctx.fillStyle = '#cc0000';
