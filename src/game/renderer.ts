@@ -419,12 +419,12 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
 
       // Multiple placement columns on each side — all same size at same depth
       const placements = [
-        { mult: 1.25, freq: 3, seed: 7 },    // roadside
-        { mult: 1.8,  freq: 3, seed: 11 },   // near
-        { mult: 2.8,  freq: 3, seed: 17 },   // mid
-        { mult: 4.0,  freq: 6, seed: 23 },   // far
-        { mult: 6.0,  freq: 6, seed: 31 },   // very far
-        { mult: 9.0,  freq: 9, seed: 37 },   // screen edge
+        { mult: 1.9,  freq: 3, seed: 7 },    // roadside (kept off the road)
+        { mult: 2.6,  freq: 3, seed: 11 },   // near
+        { mult: 3.6,  freq: 3, seed: 17 },   // mid
+        { mult: 5.0,  freq: 6, seed: 23 },   // far
+        { mult: 7.0,  freq: 6, seed: 31 },   // very far
+        { mult: 10.0, freq: 9, seed: 37 },   // screen edge
       ];
 
       for (const p of placements) {
