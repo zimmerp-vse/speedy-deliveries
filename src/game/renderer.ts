@@ -704,109 +704,189 @@ function shadeColor(hex: string, percent: number): string {
 function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
   const cx = W / 2 + state.steering * 40;
   const cy = H - 10;
-  const cw = 130, ch = 85;
+  const cw = 140, ch = 78;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 2, cw * 0.52, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy + 3, cw * 0.55, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const bodyG = ctx.createLinearGradient(cx - cw / 2, cy - ch, cx + cw / 2, cy);
-  bodyG.addColorStop(0, '#ff3333');
-  bodyG.addColorStop(0.3, '#ee1111');
-  bodyG.addColorStop(0.7, '#cc0000');
-  bodyG.addColorStop(1, '#880000');
+  // ===== LOWER BODY (sleek wedge) =====
+  const bodyG = ctx.createLinearGradient(cx, cy - ch * 0.6, cx, cy);
+  bodyG.addColorStop(0, '#ff2a2a');
+  bodyG.addColorStop(0.4, '#e60a0a');
+  bodyG.addColorStop(0.85, '#a00505');
+  bodyG.addColorStop(1, '#5a0202');
   ctx.fillStyle = bodyG;
   ctx.beginPath();
-  ctx.roundRect(cx - cw / 2, cy - ch * 0.55, cw, ch * 0.55, [4, 4, 6, 6]);
+  ctx.moveTo(cx - cw / 2, cy - ch * 0.18);
+  ctx.lineTo(cx - cw / 2 + 6, cy - ch * 0.55);
+  ctx.lineTo(cx - cw * 0.42, cy - ch * 0.62);
+  ctx.lineTo(cx + cw * 0.42, cy - ch * 0.62);
+  ctx.lineTo(cx + cw / 2 - 6, cy - ch * 0.55);
+  ctx.lineTo(cx + cw / 2, cy - ch * 0.18);
+  ctx.lineTo(cx + cw / 2 - 4, cy - 4);
+  ctx.lineTo(cx - cw / 2 + 4, cy - 4);
+  ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(cx - cw / 2 + 4, cy - ch * 0.5, cw - 8, 3);
+  // Side body highlight
+  const hlG = ctx.createLinearGradient(cx, cy - ch * 0.4, cx, cy - ch * 0.3);
+  hlG.addColorStop(0, 'rgba(255,255,255,0.4)');
+  hlG.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = hlG;
+  ctx.fillRect(cx - cw / 2 + 8, cy - ch * 0.4, cw - 16, 4);
 
-  ctx.fillStyle = '#bb0000';
+  // Lower side skirt
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(cx - cw / 2 + 4, cy - ch * 0.18, cw - 8, 5);
+
+  // ===== CABRIO COCKPIT (open top) =====
+  ctx.fillStyle = '#1a0808';
   ctx.beginPath();
-  ctx.roundRect(cx - cw * 0.35, cy - ch, cw * 0.7, ch * 0.5, [6, 6, 0, 0]);
+  ctx.roundRect(cx - cw * 0.36, cy - ch * 0.78, cw * 0.72, ch * 0.32, [10, 10, 4, 4]);
   ctx.fill();
 
-  const wsG = ctx.createLinearGradient(0, cy - ch, 0, cy - ch * 0.55);
-  wsG.addColorStop(0, 'rgba(180,220,255,0.9)');
-  wsG.addColorStop(1, 'rgba(100,160,220,0.7)');
+  const seatG = ctx.createLinearGradient(cx, cy - ch * 0.78, cx, cy - ch * 0.5);
+  seatG.addColorStop(0, '#3a1a0a');
+  seatG.addColorStop(1, '#1a0808');
+  ctx.fillStyle = seatG;
+  ctx.beginPath();
+  ctx.roundRect(cx - cw * 0.32, cy - ch * 0.74, cw * 0.64, ch * 0.22, [8, 8, 2, 2]);
+  ctx.fill();
+
+  // Windshield (small angled cabrio glass)
+  const wsG = ctx.createLinearGradient(0, cy - ch, 0, cy - ch * 0.78);
+  wsG.addColorStop(0, 'rgba(180,220,255,0.85)');
+  wsG.addColorStop(1, 'rgba(80,140,200,0.5)');
   ctx.fillStyle = wsG;
   ctx.beginPath();
-  ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
+  ctx.moveTo(cx - cw * 0.28, cy - ch * 0.78);
+  ctx.lineTo(cx - cw * 0.22, cy - ch * 0.95);
+  ctx.lineTo(cx + cw * 0.22, cy - ch * 0.95);
+  ctx.lineTo(cx + cw * 0.28, cy - ch * 0.78);
+  ctx.closePath();
   ctx.fill();
-
-  ctx.strokeStyle = '#990000';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(cx - cw * 0.3, cy - ch + 4, cw * 0.6, ch * 0.38, [4, 4, 0, 0]);
+  ctx.strokeStyle = 'rgba(220,220,220,0.7)';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Passengers - celebrating if delivering
-  const celebrating = state.celebrating;
-  drawPassenger(ctx, cx - 14, cy - ch + 4, 'man', state.isAccident, celebrating, state.gameTime);
-  drawPassenger(ctx, cx + 14, cy - ch + 4, 'woman', state.isAccident, celebrating, state.gameTime);
+  // Roll bars behind seats
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(cx - cw * 0.16, cy - ch * 0.74, 6, Math.PI, 0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx + cw * 0.16, cy - ch * 0.74, 6, Math.PI, 0);
+  ctx.stroke();
 
-  // Side mirrors
+  // Passengers
+  const celebrating = state.celebrating;
+  drawPassenger(ctx, cx - 18, cy - ch * 0.62, 'man', state.isAccident, celebrating, state.gameTime);
+  drawPassenger(ctx, cx + 18, cy - ch * 0.62, 'woman', state.isAccident, celebrating, state.gameTime);
+
+  // Center console
+  ctx.fillStyle = '#2a0a0a';
+  ctx.fillRect(cx - 2, cy - ch * 0.66, 4, ch * 0.15);
+
+  // ===== HOOD DETAILS =====
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - ch * 0.5, cw * 0.08, 2.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - cw * 0.2, cy - ch * 0.6);
+  ctx.lineTo(cx - cw * 0.3, cy - ch * 0.2);
+  ctx.moveTo(cx + cw * 0.2, cy - ch * 0.6);
+  ctx.lineTo(cx + cw * 0.3, cy - ch * 0.2);
+  ctx.stroke();
+
+  // ===== SIDE MIRRORS =====
   ctx.fillStyle = '#cc0000';
   ctx.beginPath();
-  ctx.moveTo(cx - cw * 0.35, cy - ch * 0.7);
-  ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.65);
-  ctx.lineTo(cx - cw * 0.35 - 10, cy - ch * 0.55);
-  ctx.lineTo(cx - cw * 0.35, cy - ch * 0.55);
+  ctx.moveTo(cx - cw * 0.32, cy - ch * 0.78);
+  ctx.lineTo(cx - cw * 0.32 - 11, cy - ch * 0.7);
+  ctx.lineTo(cx - cw * 0.32 - 11, cy - ch * 0.6);
+  ctx.lineTo(cx - cw * 0.32, cy - ch * 0.62);
   ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(cx + cw * 0.35, cy - ch * 0.7);
-  ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.65);
-  ctx.lineTo(cx + cw * 0.35 + 10, cy - ch * 0.55);
-  ctx.lineTo(cx + cw * 0.35, cy - ch * 0.55);
+  ctx.moveTo(cx + cw * 0.32, cy - ch * 0.78);
+  ctx.lineTo(cx + cw * 0.32 + 11, cy - ch * 0.7);
+  ctx.lineTo(cx + cw * 0.32 + 11, cy - ch * 0.6);
+  ctx.lineTo(cx + cw * 0.32, cy - ch * 0.62);
   ctx.fill();
-  ctx.fillStyle = 'rgba(135,206,235,0.6)';
-  ctx.fillRect(cx - cw * 0.35 - 9, cy - ch * 0.64, 8, 8);
-  ctx.fillRect(cx + cw * 0.35 + 2, cy - ch * 0.64, 8, 8);
+  ctx.fillStyle = 'rgba(180,220,255,0.7)';
+  ctx.fillRect(cx - cw * 0.32 - 10, cy - ch * 0.69, 8, 7);
+  ctx.fillRect(cx + cw * 0.32 + 2, cy - ch * 0.69, 8, 7);
 
-  // Wheels
-  ctx.fillStyle = '#111';
-  const wheelW = 10, wheelH = 16;
-  ctx.fillRect(cx - cw / 2 - 4, cy - ch * 0.48, wheelW, wheelH);
-  ctx.fillRect(cx - cw / 2 - 4, cy - 14, wheelW, wheelH);
-  ctx.fillRect(cx + cw / 2 - 6, cy - ch * 0.48, wheelW, wheelH);
-  ctx.fillRect(cx + cw / 2 - 6, cy - 14, wheelW, wheelH);
-  ctx.fillStyle = '#333';
-  ctx.fillRect(cx - cw / 2 - 2, cy - ch * 0.45, 6, 3);
-  ctx.fillRect(cx + cw / 2 - 4, cy - ch * 0.45, 6, 3);
+  // ===== WHEELS with alloy detail =====
+  const wheelW = 14, wheelH = 22;
+  const drawWheel = (wx: number, wy: number) => {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath();
+    ctx.roundRect(wx, wy, wheelW, wheelH, 3);
+    ctx.fill();
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath();
+    ctx.arc(wx + wheelW / 2, wy + wheelH / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.arc(wx + wheelW / 2, wy + wheelH / 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 0.8;
+    for (let s = 0; s < 5; s++) {
+      const a = (s / 5) * Math.PI * 2 + state.gameTime * 8;
+      ctx.beginPath();
+      ctx.moveTo(wx + wheelW / 2, wy + wheelH / 2);
+      ctx.lineTo(wx + wheelW / 2 + Math.cos(a) * 4, wy + wheelH / 2 + Math.sin(a) * 4);
+      ctx.stroke();
+    }
+  };
+  drawWheel(cx - cw / 2 - 3, cy - ch * 0.42);
+  drawWheel(cx - cw / 2 - 3, cy - 18);
+  drawWheel(cx + cw / 2 - 11, cy - ch * 0.42);
+  drawWheel(cx + cw / 2 - 11, cy - 18);
 
-  // Tail lights
+  // ===== TAIL LIGHTS (round, Ferrari signature) =====
   const braking = state.speed < 5;
-  ctx.fillStyle = braking ? '#ff0000' : '#cc3333';
-  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 12; }
-  ctx.beginPath();
-  ctx.roundRect(cx - cw / 2 + 4, cy - 8, 10, 5, 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(cx + cw / 2 - 14, cy - 8, 10, 5, 2);
-  ctx.fill();
+  const tailColor = braking ? '#ff1111' : '#cc2222';
+  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 14; }
+  ctx.fillStyle = tailColor;
+  ctx.beginPath(); ctx.arc(cx - cw / 2 + 12, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - cw / 2 + 24, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + cw / 2 - 12, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + cw / 2 - 24, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
 
-  ctx.fillStyle = '#ff8800';
-  ctx.fillRect(cx - cw / 2 + 4, cy - 14, 6, 3);
-  ctx.fillRect(cx + cw / 2 - 10, cy - 14, 6, 3);
+  // Reverse / fog lights
+  ctx.fillStyle = '#ffaa33';
+  ctx.fillRect(cx - cw / 2 + 6, cy - 15, 4, 3);
+  ctx.fillRect(cx + cw / 2 - 10, cy - 15, 4, 3);
 
-  // License plate
+  // ===== LICENSE PLATE =====
   ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.roundRect(cx - 12, cy - 5, 24, 8, 2);
+  ctx.roundRect(cx - 16, cy - 6, 32, 9, 2);
   ctx.fill();
   ctx.fillStyle = '#111';
-  ctx.font = 'bold 5px monospace';
+  ctx.font = 'bold 6px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('OUT-RUN', cx, cy - 1);
+  ctx.fillText('FERRARI', cx, cy - 1);
 
-  ctx.fillStyle = '#ddd';
-  ctx.font = '4px sans-serif';
-  ctx.fillText('TURBO', cx, cy - 18);
+  // Prancing horse badge
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.roundRect(cx - 5, cy - 22, 10, 12, 1);
+  ctx.fill();
+  ctx.font = 'bold 9px serif';
+  ctx.fillText('🐎', cx, cy - 16);
 }
 
 function drawPassenger(
