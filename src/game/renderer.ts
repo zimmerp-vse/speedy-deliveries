@@ -200,8 +200,8 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Hood smoke
-  drawSmokeParticles(ctx, state.crashSmoke);
+  // Hood smoke is drawn before the car (in main render) so it appears behind the driver.
+  // Only draw any late-spawning smoke particles here as a safety pass — skipped to avoid covering driver.
 
   // Collided object — bumped ahead on impact then tumbles away
   if (state.collidedSprite) {
