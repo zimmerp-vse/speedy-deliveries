@@ -217,7 +217,7 @@ export class GameEngine {
         s.playerX += seg.curve * dt * (s.speed / cfg.maxSpeed) * 0.3;
       }
       
-      s.playerX = Math.max(-2.5, Math.min(2.5, s.playerX));
+      s.playerX = Math.max(-1.6, Math.min(1.6, s.playerX));
     }
 
     // Tire smoke when steering hard at speed
