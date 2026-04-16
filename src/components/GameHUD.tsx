@@ -1,3 +1,5 @@
+import { Tachometer } from './Tachometer';
+
 interface GameHUDProps {
   speed: number;
   money: number;
@@ -12,14 +14,8 @@ export function GameHUD({ speed, money, round, totalRounds, timeRemaining }: Gam
 
   return (
     <div className="absolute top-6 left-0 right-0 px-4 flex justify-between items-start pointer-events-none z-10">
-      {/* Speed */}
-      <div className="bg-card/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border">
-        <div className="font-arcade text-[10px] text-muted-foreground">SPEED</div>
-        <div className="font-display text-xl font-bold text-foreground">
-          {Math.round(speed)}
-          <span className="text-xs text-muted-foreground ml-1">km/h</span>
-        </div>
-      </div>
+      {/* Ferrari tachometer */}
+      <Tachometer speed={speed} maxSpeed={200} />
       
       {/* Timer */}
       <div className={`bg-card/80 backdrop-blur-sm rounded-lg px-3 py-2 border ${isLow ? 'border-destructive' : 'border-border'}`}>
