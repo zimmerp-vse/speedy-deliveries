@@ -3,12 +3,12 @@ interface TachometerProps {
   maxSpeed?: number;
 }
 
-// Ferrari-style yellow tachometer. Speed is mapped to RPM-style sweep (0..10).
-export function Tachometer({ speed, maxSpeed = 200 }: TachometerProps) {
-  const size = 130;
+// Ferrari-style yellow speedometer (km/h). Needle sweeps from 0 to maxSpeed.
+export function Tachometer({ speed, maxSpeed = 220 }: TachometerProps) {
+  const size = 190;
   const cx = size / 2;
   const cy = size / 2;
-  const r = 54;
+  const r = 80;
 
   // Sweep from -135deg (left) to +135deg (right) = 270deg total
   const startAngle = -135;
@@ -18,61 +18,88 @@ export function Tachometer({ speed, maxSpeed = 200 }: TachometerProps) {
   const ratio = Math.max(0, Math.min(1, speed / maxSpeed));
   const needleAngle = startAngle + totalSweep * ratio;
 
-  // Tick marks: 0..10
-  const ticks = Array.from({ length: 11 }, (_, i) => i);
+  // Major ticks every 20 km/h: 0, 20, 40, ..., 220
+  const step = 20;
+  const majorTicks: number[] = [];
+  for (let v = 0; v <= maxSpeed; v += step) majorTicks.push(v);
 
   const polar = (angleDeg: number, radius: number) => {
     const a = (angleDeg - 90) * (Math.PI / 180);
     return { x: cx + radius * Math.cos(a), y: cy + radius * Math.sin(a) };
   };
 
+  const redlineSpeed = maxSpeed * 0.8; // last 20% is redline
+
   return (
     <div
-      className="relative"
-      style={{ width: size, height: size, filter: 'drop-shadow(0 6px 14px rgba(0,0,0,0.55))' }}
+      className="relative pointer-events-none"
+      style={{ width: size, height: size, filter: 'drop-shadow(0 8px 18px rgba(0,0,0,0.55))' }}
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <defs>
-          <radialGradient id="tachFace" cx="50%" cy="45%" r="60%">
+          <radialGradient id="tachFace" cx="50%" cy="42%" r="62%">
             <stop offset="0%" stopColor="#fff48a" />
             <stop offset="55%" stopColor="#f5c518" />
-            <stop offset="100%" stopColor="#c98a05" />
+            <stop offset="100%" stopColor="#b67d04" />
           </radialGradient>
           <radialGradient id="tachBezel" cx="50%" cy="50%" r="50%">
-            <stop offset="80%" stopColor="#3a3a3a" />
+            <stop offset="78%" stopColor="#4a4a4a" />
             <stop offset="92%" stopColor="#1a1a1a" />
             <stop offset="100%" stopColor="#000" />
           </radialGradient>
           <linearGradient id="needleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#f8f8f8" />
-            <stop offset="100%" stopColor="#9a9a9a" />
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#888888" />
           </linearGradient>
+          <radialGradient id="hubGrad" cx="50%" cy="40%" r="60%">
+            <stop offset="0%" stopColor="#666" />
+            <stop offset="60%" stopColor="#1c1c1c" />
+            <stop offset="100%" stopColor="#000" />
+          </radialGradient>
         </defs>
 
         {/* Outer bezel */}
         <circle cx={cx} cy={cy} r={size / 2 - 1} fill="url(#tachBezel)" />
-        <circle cx={cx} cy={cy} r={size / 2 - 6} fill="#0a0a0a" />
+        <circle cx={cx} cy={cy} r={size / 2 - 8} fill="#0a0a0a" />
         {/* Yellow face */}
-        <circle cx={cx} cy={cy} r={r + 6} fill="url(#tachFace)" />
-        {/* Inner ring shadow */}
-        <circle cx={cx} cy={cy} r={r + 6} fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth={1} />
+        <circle cx={cx} cy={cy} r={r + 8} fill="url(#tachFace)" />
+        <circle cx={cx} cy={cy} r={r + 8} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth={1} />
 
-        {/* Tick marks + numbers */}
-        {ticks.map((t) => {
-          const angle = startAngle + (totalSweep * t) / 10;
-          const isRedline = t >= 8;
-          const outer = polar(angle, r + 2);
-          const inner = polar(angle, r - 6);
-          const numPos = polar(angle, r - 17);
+        {/* Redline arc */}
+        {(() => {
+          const a1 = startAngle + totalSweep * (redlineSpeed / maxSpeed);
+          const a2 = endAngle;
+          const arcR = r + 4;
+          const p1 = polar(a1, arcR);
+          const p2 = polar(a2, arcR);
+          const largeArc = a2 - a1 > 180 ? 1 : 0;
           return (
-            <g key={t}>
+            <path
+              d={`M ${p1.x} ${p1.y} A ${arcR} ${arcR} 0 ${largeArc} 1 ${p2.x} ${p2.y}`}
+              stroke="#c00"
+              strokeWidth={4}
+              fill="none"
+              strokeLinecap="round"
+            />
+          );
+        })()}
+
+        {/* Major ticks + numbers */}
+        {majorTicks.map((v) => {
+          const angle = startAngle + (totalSweep * v) / maxSpeed;
+          const isRedline = v >= redlineSpeed;
+          const outer = polar(angle, r + 2);
+          const inner = polar(angle, r - 8);
+          const numPos = polar(angle, r - 22);
+          return (
+            <g key={v}>
               <line
                 x1={inner.x}
                 y1={inner.y}
                 x2={outer.x}
                 y2={outer.y}
                 stroke={isRedline ? '#c00' : '#0a0a0a'}
-                strokeWidth={2}
+                strokeWidth={2.5}
                 strokeLinecap="round"
               />
               <text
@@ -80,72 +107,64 @@ export function Tachometer({ speed, maxSpeed = 200 }: TachometerProps) {
                 y={numPos.y}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={11}
-                fontWeight={700}
+                fontSize={13}
+                fontWeight={800}
                 fontFamily="'Orbitron', sans-serif"
                 fill={isRedline ? '#c00' : '#0a0a0a'}
               >
-                {t}
+                {v}
               </text>
             </g>
           );
         })}
 
-        {/* Minor ticks */}
-        {Array.from({ length: 51 }, (_, i) => i).map((i) => {
-          if (i % 5 === 0) return null;
-          const angle = startAngle + (totalSweep * i) / 50;
-          const isRedline = i >= 40;
+        {/* Minor ticks every 5 km/h */}
+        {Array.from({ length: Math.floor(maxSpeed / 5) + 1 }, (_, i) => i * 5).map((v) => {
+          if (v % step === 0) return null;
+          const angle = startAngle + (totalSweep * v) / maxSpeed;
+          const isRedline = v >= redlineSpeed;
           const outer = polar(angle, r + 1);
-          const inner = polar(angle, r - 3);
+          const inner = polar(angle, r - 4);
           return (
             <line
-              key={`m-${i}`}
+              key={`m-${v}`}
               x1={inner.x}
               y1={inner.y}
               x2={outer.x}
               y2={outer.y}
               stroke={isRedline ? '#c00' : '#0a0a0a'}
-              strokeWidth={1}
+              strokeWidth={1.2}
             />
           );
         })}
 
-        {/* RPM label */}
+        {/* km/h label */}
         <text
           x={cx}
-          y={cy - 16}
+          y={cy - 28}
           textAnchor="middle"
-          fontSize={7}
-          fontWeight={700}
+          fontSize={9}
+          fontWeight={800}
           fontFamily="'Orbitron', sans-serif"
           fill="#0a0a0a"
-          letterSpacing={1}
+          letterSpacing={2}
         >
-          RPM
-        </text>
-        <text
-          x={cx}
-          y={cy - 8}
-          textAnchor="middle"
-          fontSize={5}
-          fontFamily="'Orbitron', sans-serif"
-          fill="#0a0a0a"
-        >
-          x1000
+          km/h
         </text>
 
         {/* Prancing horse stand-in (shield) */}
-        <g transform={`translate(${cx - 6}, ${cy + 2})`}>
+        <g transform={`translate(${cx - 9}, ${cy - 14})`}>
           <path
-            d="M6 0 L12 3 L12 8 Q12 12 6 14 Q0 12 0 8 L0 3 Z"
+            d="M9 0 L18 4 L18 12 Q18 18 9 21 Q0 18 0 12 L0 4 Z"
             fill="#0a0a0a"
+            stroke="#c00"
+            strokeWidth={0.8}
           />
           <text
-            x={6}
-            y={9}
+            x={9}
+            y={13}
             textAnchor="middle"
-            fontSize={6}
+            fontSize={9}
             fontWeight={900}
             fill="#f5c518"
             fontFamily="'Orbitron', sans-serif"
@@ -156,20 +175,20 @@ export function Tachometer({ speed, maxSpeed = 200 }: TachometerProps) {
 
         {/* Digital speed window */}
         <rect
-          x={cx + 14}
-          y={cy + 18}
-          width={32}
-          height={14}
-          rx={2}
+          x={cx - 26}
+          y={cy + 22}
+          width={52}
+          height={20}
+          rx={3}
           fill="#0a0a0a"
           stroke="#000"
         />
         <text
-          x={cx + 30}
-          y={cy + 25.5}
+          x={cx}
+          y={cy + 33}
           textAnchor="middle"
           dominantBaseline="central"
-          fontSize={9}
+          fontSize={14}
           fontWeight={700}
           fontFamily="'Orbitron', sans-serif"
           fill="#7fffa8"
@@ -182,24 +201,19 @@ export function Tachometer({ speed, maxSpeed = 200 }: TachometerProps) {
           style={{
             transform: `rotate(${needleAngle}deg)`,
             transformOrigin: `${cx}px ${cy}px`,
-            transition: 'transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transition: 'transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
         >
           <polygon
-            points={`${cx - 2},${cy + 8} ${cx + 2},${cy + 8} ${cx + 1},${cy - r + 4} ${cx - 1},${cy - r + 4}`}
+            points={`${cx - 3},${cy + 14} ${cx + 3},${cy + 14} ${cx + 1.2},${cy - r + 6} ${cx - 1.2},${cy - r + 6}`}
             fill="url(#needleGrad)"
             stroke="#222"
-            strokeWidth={0.5}
+            strokeWidth={0.6}
           />
-          <circle cx={cx} cy={cy} r={6} fill="#1a1a1a" stroke="#444" strokeWidth={1} />
-          <circle cx={cx} cy={cy} r={2} fill="#666" />
+          <circle cx={cx} cy={cy} r={9} fill="url(#hubGrad)" stroke="#000" strokeWidth={1} />
+          <circle cx={cx} cy={cy} r={3} fill="#888" />
         </g>
       </svg>
-
-      {/* km/h label below */}
-      <div className="absolute -bottom-1 left-0 right-0 text-center font-arcade text-[8px] text-foreground/80">
-        km/h
-      </div>
     </div>
   );
 }
