@@ -521,13 +521,18 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     }
   }
 
+  // Crash smoke from trunk — drawn BEFORE the car so it appears behind the driver
+  if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
+    drawSmokeParticles(ctx, state.crashSmoke);
+  }
+
   // Player car
   drawCar(ctx, state, W, H);
 
   // Tire smoke
   drawSmokeParticles(ctx, state.tireSmoke);
 
-  // Crash scene overlay
+  // Crash scene overlay (flash, text, collided object — no smoke here)
   if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
     drawCrashScene(ctx, state, W, H);
   }
