@@ -147,14 +147,15 @@ export class GameEngine {
     if (s.isAccident && !s.crashSkipped) {
       s.crashTimer += dt;
       // Spawn crash smoke from hood
-      if (s.crashTimer < 4 && Math.random() < 0.3) {
+      if (s.crashTimer < 4 && Math.random() < 0.35) {
         const W = this.canvas.width;
+        // Spawn from trunk (rear/bottom of car), drift up & back
         s.crashSmoke.push({
-          x: W / 2 + s.steering * 40 + (Math.random() - 0.5) * 20,
-          y: this.canvas.height - 90 - Math.random() * 10,
-          vx: (Math.random() - 0.5) * 30,
-          vy: -20 - Math.random() * 40,
-          size: 6 + Math.random() * 10,
+          x: W / 2 + s.steering * 40 + (Math.random() - 0.5) * 30,
+          y: this.canvas.height - 18 - Math.random() * 8,
+          vx: (Math.random() - 0.5) * 40,
+          vy: -30 - Math.random() * 50,
+          size: 8 + Math.random() * 12,
           alpha: 0.7 + Math.random() * 0.3,
           color: Math.random() < 0.3 ? '#333' : '#888',
         });
@@ -216,7 +217,7 @@ export class GameEngine {
         s.playerX += seg.curve * dt * (s.speed / cfg.maxSpeed) * 0.3;
       }
       
-      s.playerX = Math.max(-2.5, Math.min(2.5, s.playerX));
+      s.playerX = Math.max(-1.6, Math.min(1.6, s.playerX));
     }
 
     // Tire smoke when steering hard at speed

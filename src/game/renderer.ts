@@ -200,8 +200,8 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Hood smoke
-  drawSmokeParticles(ctx, state.crashSmoke);
+  // Hood smoke is drawn before the car (in main render) so it appears behind the driver.
+  // Only draw any late-spawning smoke particles here as a safety pass — skipped to avoid covering driver.
 
   // Collided object — bumped ahead on impact then tumbles away
   if (state.collidedSprite) {
@@ -335,7 +335,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     const leftBands = (sceneAny.leftBands as [string,string,number][] | undefined);
     const rightBands = (sceneAny.rightBands as [string,string,number][] | undefined);
 
-    if (leftBands && !inFinishZone) {
+    if (leftBands) {
       // Draw bands from outermost to innermost (painter's order)
       for (let b = leftBands.length - 1; b >= 0; b--) {
         const [col, colAlt, wMult] = leftBands[b];
@@ -349,9 +349,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         ctx.fill();
       }
     } else {
-      const leftGround = inFinishZone
-        ? (dark ? '#0e8a2e' : '#18b840')
-        : (dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a'));
+      const leftGround = dark ? (sceneAny.groundLeft || '#1a7a08') : (sceneAny.groundLeftAlt || '#23991a');
       ctx.fillStyle = leftGround;
       ctx.beginPath();
       ctx.moveTo(0, y1);
@@ -362,7 +360,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       ctx.fill();
     }
 
-    if (rightBands && !inFinishZone) {
+    if (rightBands) {
       for (let b = rightBands.length - 1; b >= 0; b--) {
         const [col, colAlt, wMult] = rightBands[b];
         ctx.fillStyle = dark ? col : colAlt;
@@ -375,9 +373,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         ctx.fill();
       }
     } else {
-      const rightGround = inFinishZone
-        ? (dark ? '#0e8a2e' : '#18b840')
-        : (dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a'));
+      const rightGround = dark ? (sceneAny.groundRight || '#1a7a08') : (sceneAny.groundRightAlt || '#23991a');
       ctx.fillStyle = rightGround;
       ctx.beginPath();
       ctx.moveTo(cur.screenX + cur.screenW * 1.2, y1);
@@ -387,28 +383,28 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       ctx.closePath();
       ctx.fill();
     }
+    // Rumble strips — checkpoint checker pattern at finish line, classic red/white otherwise
     const rumbleC = inFinishZone
-      ? (dark ? '#ffffff' : '#222222')
+      ? (dark ? '#111111' : '#ffffff')
       : (dark ? '#d61d1d' : '#f0e6e6');
     drawTrap(ctx, rumbleC,
       cur.screenX, y1, cur.screenW * 1.2,
       prev.screenX, y2 + 1, prev.screenW * 1.2);
 
-    // Road surface - green tint in finish zone
-    const roadColor = inFinishZone ? '#447744' : '#555555';
+    // Road surface — checker stripe at finish line, normal asphalt otherwise
+    const roadColor = inFinishZone ? (dark ? '#222222' : '#dddddd') : '#555555';
     drawTrap(ctx, roadColor,
       cur.screenX, y1 - 1, cur.screenW,
       prev.screenX, y2 + 1, prev.screenW);
 
-    // Lane dividers
-    if (dark) {
+    // Lane dividers (skip in finish zone — checker is the marker)
+    if (dark && !inFinishZone) {
       const lw1 = Math.max(2, cur.screenW * 0.015);
       const lw2 = Math.max(2, prev.screenW * 0.015);
       const lane1Cur = cur.screenW * 0.33;
       const lane1Prev = prev.screenW * 0.33;
-      const lineColor = inFinishZone ? '#aaffaa' : '#e8e8e0';
-      drawTrap(ctx, lineColor, cur.screenX - lane1Cur, y1, lw1, prev.screenX - lane1Prev, y2, lw2);
-      drawTrap(ctx, lineColor, cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
+      drawTrap(ctx, '#e8e8e0', cur.screenX - lane1Cur, y1, lw1, prev.screenX - lane1Prev, y2, lw2);
+      drawTrap(ctx, '#e8e8e0', cur.screenX + lane1Cur, y1, lw1, prev.screenX + lane1Prev, y2, lw2);
     }
 
     // Landscape scenery - spread across the full ground, not just road edge
@@ -423,12 +419,12 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
 
       // Multiple placement columns on each side — all same size at same depth
       const placements = [
-        { mult: 1.25, freq: 3, seed: 7 },    // roadside
-        { mult: 1.8,  freq: 3, seed: 11 },   // near
-        { mult: 2.8,  freq: 3, seed: 17 },   // mid
-        { mult: 4.0,  freq: 6, seed: 23 },   // far
-        { mult: 6.0,  freq: 6, seed: 31 },   // very far
-        { mult: 9.0,  freq: 9, seed: 37 },   // screen edge
+        { mult: 1.9,  freq: 3, seed: 7 },    // roadside (kept off the road)
+        { mult: 2.6,  freq: 3, seed: 11 },   // near
+        { mult: 3.6,  freq: 3, seed: 17 },   // mid
+        { mult: 5.0,  freq: 6, seed: 23 },   // far
+        { mult: 7.0,  freq: 6, seed: 31 },   // very far
+        { mult: 10.0, freq: 9, seed: 37 },   // screen edge
       ];
 
       for (const p of placements) {
@@ -521,13 +517,18 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     }
   }
 
+  // Crash smoke from trunk — drawn BEFORE the car so it appears behind the driver
+  if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
+    drawSmokeParticles(ctx, state.crashSmoke);
+  }
+
   // Player car
   drawCar(ctx, state, W, H);
 
   // Tire smoke
   drawSmokeParticles(ctx, state.tireSmoke);
 
-  // Crash scene overlay
+  // Crash scene overlay (flash, text, collided object — no smoke here)
   if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
     drawCrashScene(ctx, state, W, H);
   }
