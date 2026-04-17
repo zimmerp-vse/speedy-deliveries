@@ -189,7 +189,7 @@ export const GAME_CONFIG = {
   
   // Obstacle types
   obstacles: {
-    cars: ['🚗', '🚙', '🚕', '🚌', '🏎️'],
+    cars: ['🚗', '🚙', '🚕', '🏎️', '🚓', '🚚', '🚛', '🚜', '🚐'],
     roadObstacles: ['🌳', '🐄', '🐑', '🪨', '🛢️'],
     pedestrians: ['🧑‍🎓', '👨‍🎓', '👩‍🎓', '🚶', '🧑‍🦯'],
   },
