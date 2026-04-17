@@ -898,6 +898,7 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   ctx.fill();
   ctx.font = 'bold 9px serif';
   ctx.fillText('🐎', cx, cy - 16);
+  ctx.restore();
 }
 
 function drawPassenger(
