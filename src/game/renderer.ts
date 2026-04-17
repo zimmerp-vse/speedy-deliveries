@@ -117,6 +117,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, horizon);
 
+  // Celestial body (sun or moon) + clouds
+  drawSky(ctx, scene, W, horizon, position);
+
   // Ground below horizon — split left/right for scene atmosphere
   const sceneAny = scene as any;
   ctx.fillStyle = sceneAny.groundLeft || '#23991a';
