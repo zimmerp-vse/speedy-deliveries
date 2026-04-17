@@ -304,7 +304,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     const perspective = 1 / n;
     const screenY = horizon + (H - horizon) * perspective;
     const roadHalfW = W * 0.35 * perspective;
-    const screenX = W / 2 + (x - playerX * n * 0.12) * perspective * W * 0.3;
+    const screenX = W / 2 + (x - playerX * n * 0.32) * perspective * W * 0.3;
     lines.push({ screenY, screenX, screenW: roadHalfW, idx, absDist: playerAbsPos + n });
     dx += seg.curve * 0.5;
     dx *= 0.98;
