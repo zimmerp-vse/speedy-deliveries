@@ -313,7 +313,10 @@ export class GameEngine {
 
       const obstacleX = seg.sprite.offset * 4.2;
       const lateralDist = Math.abs(s.playerX - obstacleX);
-      if (lateralDist > 0.65) continue;
+      // Wider vehicles get a larger collision radius to match their visual size
+      const wideEmojis = ['🚚', '🚛', '🚜', '🚙'];
+      const threshold = seg.sprite.type === 'car' && wideEmojis.includes(seg.sprite.emoji ?? '') ? 0.9 : 0.65;
+      if (lateralDist > threshold) continue;
 
       if (seg.sprite.type === 'pedestrian' && s.hornActive) {
         seg.sprite.active = false;
