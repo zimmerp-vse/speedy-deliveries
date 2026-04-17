@@ -702,15 +702,26 @@ function shadeColor(hex: string, percent: number): string {
 }
 
 function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
-  const cx = W / 2 + state.steering * 40;
+  const baseCx = W / 2 + state.steering * 40;
   const cy = H - 10;
   const cw = 140, ch = 78;
 
-  // Ground shadow
+  // Ground shadow (drawn flat, before rotation)
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 3, cw * 0.55, 8, 0, 0, Math.PI * 2);
+  ctx.ellipse(baseCx, cy + 3, cw * 0.55, 8, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // Apply steering rotation + slight lateral lean around rear axle pivot
+  const steerAngle = state.steering * 0.09; // ~5° tilt
+  const pivotY = cy - 4;
+  ctx.save();
+  ctx.translate(baseCx, pivotY);
+  ctx.rotate(steerAngle);
+  ctx.transform(1, 0, -state.steering * 0.08, 1, 0, 0); // subtle skew for body lean
+  ctx.translate(-baseCx, -pivotY);
+  // Inside this transform we still draw using baseCx/cy so geometry is unchanged
+  const cx = baseCx;
 
   // ===== LOWER BODY (sleek wedge) =====
   const bodyG = ctx.createLinearGradient(cx, cy - ch * 0.6, cx, cy);
