@@ -22,7 +22,7 @@ export const GAME_CONFIG = {
   laneCount: 3,
   
   // Obstacle spawn chances per advanced road segment
-  carSpawnRate: 0.010,
+  carSpawnRate: 0.030,
   obstacleSpawnRate: 0.005,
   pedestrianSpawnRate: 0.003,
   
