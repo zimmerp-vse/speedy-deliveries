@@ -645,52 +645,261 @@ function drawTrap(
   ctx.fill();
 }
 
-function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number) {
-  const w = 72 * scale, h = 52 * scale;
-  const cx = x, cy = y;
+type VehicleKind = 'sedan' | 'sports' | 'taxi' | 'police' | 'truck' | 'bigtruck' | 'garbage' | 'hummer' | 'van';
 
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+function vehicleKindFromEmoji(emoji?: string): VehicleKind {
+  switch (emoji) {
+    case '🏎️': return 'sports';
+    case '🚕': return 'taxi';
+    case '🚓': return 'police';
+    case '🚚': return 'truck';
+    case '🚛': return 'bigtruck';
+    case '🚜': return 'garbage';
+    case '🚙': return 'hummer';
+    case '🚐': return 'van';
+    default:   return 'sedan';
+  }
+}
+
+function drawObstacleCar(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, emoji?: string) {
+  const kind = vehicleKindFromEmoji(emoji);
+  const w0 = (kind === 'bigtruck' ? 92 : kind === 'truck' || kind === 'garbage' ? 84 : kind === 'hummer' ? 80 : 72) * scale;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.beginPath();
-  ctx.ellipse(cx, cy + 2 * scale, w * 0.45, 3 * scale, 0, 0, Math.PI * 2);
+  ctx.ellipse(x, y + 3 * scale, w0 * 0.5, 4 * scale, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const colors = ['#3b82f6', '#eab308', '#10b981', '#f97316', '#a855f7', '#ef4444'];
-  const color = colors[Math.floor(Math.abs(x * 7 + y * 3)) % colors.length];
+  switch (kind) {
+    case 'sports':   return drawSports(ctx, x, y, scale);
+    case 'taxi':     return drawSedan(ctx, x, y, scale, '#facc15', true);
+    case 'police':   return drawPolice(ctx, x, y, scale);
+    case 'truck':    return drawTruck(ctx, x, y, scale, '#dc2626', false);
+    case 'bigtruck': return drawTruck(ctx, x, y, scale, '#1e40af', true);
+    case 'garbage':  return drawGarbage(ctx, x, y, scale);
+    case 'hummer':   return drawHummer(ctx, x, y, scale);
+    case 'van':      return drawVan(ctx, x, y, scale);
+    default: {
+      const palette = ['#3b82f6', '#10b981', '#f97316', '#a855f7', '#ef4444', '#0ea5e9'];
+      const color = palette[Math.floor(Math.abs(x * 7 + y * 3)) % palette.length];
+      return drawSedan(ctx, x, y, scale, color, false);
+    }
+  }
+}
 
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.5, [2 * scale, 2 * scale, 4 * scale, 4 * scale]);
-  ctx.fill();
-
-  ctx.fillStyle = shadeColor(color, -25);
-  ctx.beginPath();
-  ctx.roundRect(cx - w * 0.35, cy - h, w * 0.7, h * 0.55, [4 * scale, 4 * scale, 0, 0]);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(135,206,235,0.7)';
-  ctx.beginPath();
-  ctx.roundRect(cx - w * 0.28, cy - h + 3 * scale, w * 0.56, h * 0.35, [3 * scale, 3 * scale, 0, 0]);
-  ctx.fill();
-
+function tailLights(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, scale: number) {
   ctx.fillStyle = '#ff2222';
-  ctx.shadowColor = '#ff0000';
-  ctx.shadowBlur = 4 * scale;
-  ctx.beginPath();
-  ctx.roundRect(cx - w / 2 + 2 * scale, cy - h * 0.15, 6 * scale, 4 * scale, scale);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(cx + w / 2 - 8 * scale, cy - h * 0.15, 6 * scale, 4 * scale, scale);
-  ctx.fill();
+  ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5 * scale;
+  ctx.beginPath(); ctx.roundRect(cx - w / 2 + 2 * scale, cy - 8 * scale, 6 * scale, 4 * scale, scale); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + w / 2 - 8 * scale, cy - 8 * scale, 6 * scale, 4 * scale, scale); ctx.fill();
   ctx.shadowBlur = 0;
-
-  ctx.fillStyle = '#111';
-  ctx.fillRect(cx - w / 2 - 2 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
-  ctx.fillRect(cx + w / 2 - 3 * scale, cy - 4 * scale, 5 * scale, 6 * scale);
-
+}
+function wheels(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, s: number, h = 7) {
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(cx - w / 2 - 2 * s, cy - 4 * s, 5 * s, h * s);
+  ctx.fillRect(cx + w / 2 - 3 * s, cy - 4 * s, 5 * s, h * s);
+  ctx.fillStyle = '#888';
+  ctx.beginPath(); ctx.arc(cx - w / 2 + 0.5 * s, cy - 0.5 * s, 1.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + w / 2 - 0.5 * s, cy - 0.5 * s, 1.5 * s, 0, Math.PI * 2); ctx.fill();
+}
+function plate(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number) {
   ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.roundRect(cx - 6 * s, cy - 3 * s, 12 * s, 4 * s, s); ctx.fill();
+}
+
+function drawSedan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, color: string, isTaxi: boolean) {
+  const w = 72 * s, h = 52 * s; const cx = x, cy = y;
+  const g = ctx.createLinearGradient(cx, cy - h, cx, cy);
+  g.addColorStop(0, color); g.addColorStop(1, shadeColor(color, -30));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.5, [3 * s, 3 * s, 5 * s, 5 * s]); ctx.fill();
+  ctx.fillStyle = shadeColor(color, -20);
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.34, cy - h, w * 0.68, h * 0.55, [5 * s, 5 * s, 0, 0]); ctx.fill();
+  ctx.fillStyle = 'rgba(150,210,240,0.75)';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.28, cy - h + 3 * s, w * 0.56, h * 0.32, [3 * s, 3 * s, 0, 0]); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(cx - w / 2 + 3 * s, cy - h * 0.18, w - 6 * s, 1.5 * s);
+  if (isTaxi) {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(cx - w * 0.34, cy - h * 0.32, w * 0.68, 4 * s);
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.roundRect(cx - 6 * s, cy - h * 1.05, 12 * s, 5 * s, s); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.font = `bold ${3.5 * s}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('TAXI', cx, cy - h * 1.05 + 2.5 * s);
+  }
+  tailLights(ctx, cx, cy, w, s);
+  wheels(ctx, cx, cy, w, s);
+  plate(ctx, cx, cy, s);
+}
+
+function drawSports(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const w = 76 * s, h = 42 * s; const cx = x, cy = y;
+  const g = ctx.createLinearGradient(cx, cy - h, cx, cy);
+  g.addColorStop(0, '#fde047'); g.addColorStop(1, '#a16207');
+  ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.roundRect(cx - 6 * scale, cy - 3 * scale, 12 * scale, 4 * scale, scale);
-  ctx.fill();
+  ctx.moveTo(cx - w / 2, cy - h * 0.18);
+  ctx.lineTo(cx - w * 0.42, cy - h * 0.65);
+  ctx.lineTo(cx + w * 0.42, cy - h * 0.65);
+  ctx.lineTo(cx + w / 2, cy - h * 0.18);
+  ctx.lineTo(cx + w / 2 - 3 * s, cy - 2 * s);
+  ctx.lineTo(cx - w / 2 + 3 * s, cy - 2 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(40,40,60,0.85)';
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.3, cy - h * 0.62);
+  ctx.lineTo(cx - w * 0.18, cy - h * 0.95);
+  ctx.lineTo(cx + w * 0.18, cy - h * 0.95);
+  ctx.lineTo(cx + w * 0.3, cy - h * 0.62);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - w * 0.32, cy - h * 0.78, w * 0.64, 2 * s);
+  ctx.fillRect(cx - w * 0.3, cy - h * 0.78, 2 * s, 6 * s);
+  ctx.fillRect(cx + w * 0.3 - 2 * s, cy - h * 0.78, 2 * s, 6 * s);
+  tailLights(ctx, cx, cy, w, s);
+  wheels(ctx, cx, cy, w, s, 8);
+  plate(ctx, cx, cy, s);
+}
+
+function drawPolice(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const w = 74 * s, h = 52 * s; const cx = x, cy = y;
+  ctx.fillStyle = '#f5f5f5';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.5, [3 * s, 3 * s, 5 * s, 5 * s]); ctx.fill();
+  ctx.fillStyle = '#0a0a0a';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.5, w, h * 0.18, 3 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.34, cy - h, w * 0.68, h * 0.55, [5 * s, 5 * s, 0, 0]); ctx.fill();
+  ctx.fillStyle = 'rgba(150,210,240,0.8)';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.28, cy - h + 3 * s, w * 0.56, h * 0.3, [3 * s, 3 * s, 0, 0]); ctx.fill();
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath(); ctx.arc(cx - w * 0.18, cy - h * 0.28, 4 * s, 0, Math.PI * 2); ctx.fill();
+  const flashRed = (Math.floor(performance.now() / 200) % 2) === 0;
+  ctx.fillStyle = '#222';
+  ctx.fillRect(cx - w * 0.22, cy - h * 1.04, w * 0.44, 4 * s);
+  ctx.fillStyle = flashRed ? '#ef4444' : '#1d4ed8';
+  ctx.shadowColor = flashRed ? '#ff0000' : '#0044ff'; ctx.shadowBlur = 8 * s;
+  ctx.fillRect(cx - w * 0.22, cy - h * 1.04, w * 0.22, 4 * s);
+  ctx.fillStyle = flashRed ? '#1d4ed8' : '#ef4444';
+  ctx.shadowColor = flashRed ? '#0044ff' : '#ff0000';
+  ctx.fillRect(cx, cy - h * 1.04, w * 0.22, 4 * s);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = `bold ${3.2 * s}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('POLICE', cx + w * 0.05, cy - h * 0.3);
+  tailLights(ctx, cx, cy, w, s);
+  wheels(ctx, cx, cy, w, s);
+}
+
+function drawTruck(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, cabColor: string, big: boolean) {
+  const w = (big ? 92 : 84) * s, h = (big ? 70 : 60) * s; const cx = x, cy = y;
+  ctx.fillStyle = '#e5e7eb';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h, w * 0.78, h - 6 * s, [3 * s, 0, 4 * s, 4 * s]); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const px = cx - w / 2 + (w * 0.78) * (i / 4);
+    ctx.beginPath(); ctx.moveTo(px, cy - h + 4 * s); ctx.lineTo(px, cy - 8 * s); ctx.stroke();
+  }
+  const cabW = w * 0.26;
+  const cabX = cx + w / 2 - cabW;
+  const g = ctx.createLinearGradient(cabX, cy - h, cabX, cy);
+  g.addColorStop(0, cabColor); g.addColorStop(1, shadeColor(cabColor, -30));
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.roundRect(cabX, cy - h * 0.78, cabW, h * 0.78 - 6 * s, [4 * s, 4 * s, 4 * s, 4 * s]); ctx.fill();
+  ctx.fillStyle = 'rgba(150,210,240,0.8)';
+  ctx.beginPath(); ctx.roundRect(cabX + 2 * s, cy - h * 0.7, cabW - 4 * s, h * 0.28, 2 * s); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.fillRect(cabX + cabW - 3 * s, cy - h * 0.35, 3 * s, h * 0.2);
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillRect(cx - w / 2, cy - 8 * s, w, 3 * s);
+  ctx.fillStyle = '#ff2222'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5 * s;
+  ctx.fillRect(cx - w / 2 + 1 * s, cy - 14 * s, 4 * s, 5 * s);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#0a0a0a';
+  const wheelY = cy - 4 * s;
+  ctx.fillRect(cx - w / 2 + 2 * s, wheelY, 6 * s, 8 * s);
+  ctx.fillRect(cx - w / 2 + 14 * s, wheelY, 6 * s, 8 * s);
+  ctx.fillRect(cabX, wheelY, 6 * s, 8 * s);
+  if (big) ctx.fillRect(cabX + cabW - 6 * s, wheelY, 6 * s, 8 * s);
+}
+
+function drawGarbage(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const w = 84 * s, h = 64 * s; const cx = x, cy = y;
+  ctx.fillStyle = '#15803d';
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2, cy - h * 0.85);
+  ctx.lineTo(cx - w * 0.42, cy - h);
+  ctx.lineTo(cx + w * 0.18, cy - h);
+  ctx.lineTo(cx + w * 0.18, cy - 8 * s);
+  ctx.lineTo(cx - w / 2, cy - 8 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+  for (let i = 1; i < 5; i++) {
+    const px = cx - w / 2 + (w * 0.68) * (i / 5);
+    ctx.beginPath(); ctx.moveTo(px, cy - h * 0.95); ctx.lineTo(px, cy - 9 * s); ctx.stroke();
+  }
+  ctx.fillStyle = '#ca8a04';
+  ctx.beginPath(); ctx.roundRect(cx + w * 0.18, cy - h * 0.7, w * 0.32, h * 0.7 - 8 * s, [4 * s, 4 * s, 3 * s, 3 * s]); ctx.fill();
+  ctx.fillStyle = 'rgba(150,210,240,0.8)';
+  ctx.beginPath(); ctx.roundRect(cx + w * 0.2, cy - h * 0.62, w * 0.28, h * 0.28, 2 * s); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.fillRect(cx - w / 2 - 4 * s, cy - h * 0.5, 4 * s, h * 0.4);
+  ctx.fillStyle = '#6b7280';
+  ctx.fillRect(cx - w / 2, cy - 8 * s, w, 3 * s);
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(cx - w / 2 + 4 * s, cy - 4 * s, 7 * s, 9 * s);
+  ctx.fillRect(cx - w * 0.05, cy - 4 * s, 7 * s, 9 * s);
+  ctx.fillRect(cx + w * 0.32, cy - 4 * s, 7 * s, 9 * s);
+}
+
+function drawHummer(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const w = 80 * s, h = 60 * s; const cx = x, cy = y;
+  const g = ctx.createLinearGradient(cx, cy - h, cx, cy);
+  g.addColorStop(0, '#4d7c0f'); g.addColorStop(1, '#1a2e05');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.55, w, h * 0.55, 3 * s); ctx.fill();
+  ctx.fillStyle = '#3f6212';
+  ctx.fillRect(cx - w * 0.4, cy - h, w * 0.8, h * 0.5);
+  ctx.fillStyle = 'rgba(120,180,200,0.7)';
+  ctx.fillRect(cx - w * 0.34, cy - h + 3 * s, w * 0.68, h * 0.22);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - w * 0.42, cy - h - 2 * s, w * 0.84, 2 * s);
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(cx - w * 0.4 + i * w * 0.22, cy - h - 4 * s, 1.5 * s, 2 * s);
+  }
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - w * 0.18, cy - h * 0.32, w * 0.36, h * 0.12);
+  ctx.strokeStyle = '#777'; ctx.lineWidth = 1;
+  for (let i = 1; i < 6; i++) {
+    const gx = cx - w * 0.18 + (w * 0.36) * (i / 6);
+    ctx.beginPath(); ctx.moveTo(gx, cy - h * 0.32); ctx.lineTo(gx, cy - h * 0.2); ctx.stroke();
+  }
+  ctx.fillStyle = '#fef9c3';
+  ctx.beginPath(); ctx.arc(cx - w * 0.32, cy - h * 0.28, 3 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + w * 0.32, cy - h * 0.28, 3 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(cx - w / 2 - 3 * s, cy - 5 * s, 8 * s, 10 * s);
+  ctx.fillRect(cx + w / 2 - 5 * s, cy - 5 * s, 8 * s, 10 * s);
+  tailLights(ctx, cx, cy, w, s);
+}
+
+function drawVan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  const w = 76 * s, h = 60 * s; const cx = x, cy = y;
+  ctx.fillStyle = '#e0e7ff';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h, w, h - 6 * s, [10 * s, 10 * s, 4 * s, 4 * s]); ctx.fill();
+  ctx.fillStyle = '#c7d2fe';
+  ctx.beginPath();
+  ctx.moveTo(cx + w / 2, cy - h * 0.55);
+  ctx.lineTo(cx + w / 2, cy - 6 * s);
+  ctx.lineTo(cx + w * 0.3, cy - 6 * s);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(120,180,210,0.8)';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h * 0.85, w * 0.5, h * 0.3, 2 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + w * 0.1, cy - h * 0.85, w * 0.32, h * 0.28, 2 * s); ctx.fill();
+  ctx.fillStyle = '#4f46e5';
+  ctx.fillRect(cx - w / 2, cy - h * 0.42, w, 3 * s);
+  tailLights(ctx, cx, cy, w, s);
+  wheels(ctx, cx, cy, w, s, 8);
 }
 
 function shadeColor(hex: string, percent: number): string {
