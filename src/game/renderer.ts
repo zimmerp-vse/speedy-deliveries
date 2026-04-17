@@ -224,7 +224,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     ctx.scale(shrink, shrink);
 
     if (state.collidedSprite.type === 'car') {
-      drawObstacleCar(ctx, 0, 0, 1.2);
+      drawObstacleCar(ctx, 0, 0, 1.2, state.collidedSprite.emoji);
     } else {
       ctx.font = '72px serif';
       ctx.textAlign = 'center';
@@ -506,7 +506,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
-        drawObstacleCar(ctx, spriteX, spriteY, spriteScale);
+        drawObstacleCar(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
       } else {
         const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
         ctx.font = `${fSize}px serif`;
