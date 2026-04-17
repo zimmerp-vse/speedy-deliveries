@@ -117,6 +117,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   ctx.fillStyle = skyG;
   ctx.fillRect(0, 0, W, horizon);
 
+  // Celestial body (sun or moon) + clouds
+  drawSky(ctx, scene, W, horizon, position);
+
   // Ground below horizon — split left/right for scene atmosphere
   const sceneAny = scene as any;
   ctx.fillStyle = sceneAny.groundLeft || '#23991a';
@@ -1216,4 +1219,100 @@ function drawBar(ctx: CanvasRenderingContext2D, state: GameState, W: number) {
   ctx.textBaseline = 'middle';
   ctx.fillText('📦', x + 2, y + h / 2);
   ctx.fillText(state.deliveryType.emoji, x + w - 10, y + h / 2);
+}
+
+function drawSky(
+  ctx: CanvasRenderingContext2D,
+  scene: typeof GAME_CONFIG.scenes[0],
+  W: number,
+  horizon: number,
+  position: number,
+) {
+  const name = scene.name.toLowerCase();
+  const isNight = name.includes('night');
+  const isRainy = name.includes('rainy');
+  const isSnow = name.includes('snow');
+  const isVolcano = name.includes('volcano');
+
+  // Celestial body
+  const bodyX = W * 0.72;
+  const bodyY = horizon * 0.45;
+  const bodyR = Math.min(W, horizon) * 0.08;
+
+  if (isNight) {
+    // Stars
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 40; i++) {
+      const sx = ((i * 97) % W);
+      const sy = ((i * 53) % (horizon * 0.8));
+      const r = (i % 3) * 0.4 + 0.4;
+      ctx.fillRect(sx, sy, r, r);
+    }
+    // Moon with glow
+    const glow = ctx.createRadialGradient(bodyX, bodyY, bodyR * 0.5, bodyX, bodyY, bodyR * 2.2);
+    glow.addColorStop(0, 'rgba(230,230,255,0.45)');
+    glow.addColorStop(1, 'rgba(230,230,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, bodyR * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f5f3e7';
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, bodyR, 0, Math.PI * 2);
+    ctx.fill();
+    // Moon craters
+    ctx.fillStyle = 'rgba(180,180,200,0.4)';
+    ctx.beginPath();
+    ctx.arc(bodyX - bodyR * 0.3, bodyY - bodyR * 0.2, bodyR * 0.18, 0, Math.PI * 2);
+    ctx.arc(bodyX + bodyR * 0.25, bodyY + bodyR * 0.15, bodyR * 0.12, 0, Math.PI * 2);
+    ctx.arc(bodyX + bodyR * 0.05, bodyY - bodyR * 0.4, bodyR * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (!isRainy) {
+    // Sun with glow
+    const sunColor = isVolcano ? '#ffeb6b' : '#fffbe0';
+    const glow = ctx.createRadialGradient(bodyX, bodyY, bodyR * 0.6, bodyX, bodyY, bodyR * 2.8);
+    glow.addColorStop(0, 'rgba(255,240,180,0.55)');
+    glow.addColorStop(1, 'rgba(255,240,180,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, bodyR * 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = sunColor;
+    ctx.beginPath();
+    ctx.arc(bodyX, bodyY, bodyR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Clouds (skip volcano — uses smoke)
+  if (!isVolcano) {
+    const cloudColor = isNight ? 'rgba(180,180,210,0.35)'
+      : isRainy ? 'rgba(80,85,100,0.7)'
+      : isSnow ? 'rgba(255,255,255,0.85)'
+      : 'rgba(255,255,255,0.75)';
+    const cloudCount = 5;
+    const scroll = (position * 0.4) % W;
+    for (let i = 0; i < cloudCount; i++) {
+      const seed = i * 137;
+      const baseX = (seed % W);
+      const x = ((baseX - scroll) % (W + 200) + W + 200) % (W + 200) - 100;
+      const y = horizon * (0.15 + ((seed * 13) % 100) / 400);
+      const scale = 0.7 + ((seed * 7) % 10) / 20;
+      drawCloud(ctx, x, y, scale, cloudColor);
+    }
+  }
+}
+
+function drawCloud(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, scale: number, color: string,
+) {
+  ctx.fillStyle = color;
+  const r = 14 * scale;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.arc(x + r * 0.9, y - r * 0.4, r * 0.9, 0, Math.PI * 2);
+  ctx.arc(x + r * 1.8, y, r * 0.85, 0, Math.PI * 2);
+  ctx.arc(x + r * 0.9, y + r * 0.2, r * 1.1, 0, Math.PI * 2);
+  ctx.arc(x + r * 2.4, y + r * 0.2, r * 0.7, 0, Math.PI * 2);
+  ctx.fill();
 }
