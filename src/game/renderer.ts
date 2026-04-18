@@ -509,6 +509,9 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
+        if (isNightScene(scene)) {
+          drawOncomingHeadlights(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+        }
         drawObstacleCar(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
       } else {
         const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
@@ -523,6 +526,11 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   // Crash smoke from trunk — drawn BEFORE the car so it appears behind the driver
   if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
     drawSmokeParticles(ctx, state.crashSmoke);
+  }
+
+  // Player headlights (night only) — projected forward onto road
+  if (isNightScene(state.scene)) {
+    drawPlayerHeadlights(ctx, state, W, H);
   }
 
   // Player car
@@ -1315,4 +1323,74 @@ function drawCloud(
   ctx.arc(x + r * 0.9, y + r * 0.2, r * 1.1, 0, Math.PI * 2);
   ctx.arc(x + r * 2.4, y + r * 0.2, r * 0.7, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function isNightScene(scene: typeof GAME_CONFIG.scenes[0]): boolean {
+  return scene.name.toLowerCase().includes('night');
+}
+
+function drawOncomingHeadlights(
+  ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, emoji?: string,
+) {
+  const kind = vehicleKindFromEmoji(emoji);
+  const w = (kind === 'bigtruck' ? 92 : kind === 'truck' || kind === 'garbage' ? 84 : kind === 'hummer' ? 80 : 72) * scale;
+  const headY = y - 30 * scale;
+  const lampR = Math.max(2, 5 * scale);
+  const haloR = Math.max(8, 22 * scale);
+
+  const halo = ctx.createRadialGradient(x, headY, 0, x, headY, haloR * 2);
+  halo.addColorStop(0, 'rgba(255,240,180,0.55)');
+  halo.addColorStop(0.5, 'rgba(255,230,140,0.18)');
+  halo.addColorStop(1, 'rgba(255,220,100,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(x, headY, haloR * 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  ctx.shadowColor = '#fff8c8';
+  ctx.shadowBlur = 14 * scale;
+  ctx.fillStyle = '#fffbe0';
+  ctx.beginPath(); ctx.arc(x - w * 0.32, headY, lampR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + w * 0.32, headY, lampR, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawPlayerHeadlights(
+  ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number,
+) {
+  const baseCx = W / 2 + state.steering * 40;
+  const cy = H - 10;
+  const cw = 140;
+  const lampL = { x: baseCx - cw * 0.36, y: cy - 50 };
+  const lampR = { x: baseCx + cw * 0.36, y: cy - 50 };
+  const horizonY = H * 0.55;
+  const aim = baseCx + state.steering * 80;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (const lamp of [lampL, lampR]) {
+    const beam = ctx.createLinearGradient(lamp.x, lamp.y, aim, horizonY);
+    beam.addColorStop(0, 'rgba(255,245,200,0.55)');
+    beam.addColorStop(0.4, 'rgba(255,235,160,0.25)');
+    beam.addColorStop(1, 'rgba(255,225,120,0)');
+    ctx.fillStyle = beam;
+    const spread = 60;
+    ctx.beginPath();
+    ctx.moveTo(lamp.x - 4, lamp.y);
+    ctx.lineTo(lamp.x + 4, lamp.y);
+    ctx.lineTo(aim + spread, horizonY);
+    ctx.lineTo(aim - spread, horizonY);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.shadowColor = '#fff8c8';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#fffbe0';
+  ctx.beginPath(); ctx.arc(lampL.x, lampL.y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(lampR.x, lampR.y, 5, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
 }
