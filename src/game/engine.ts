@@ -74,6 +74,7 @@ export class GameEngine {
       crashSmoke: [],
       crashTimer: 0,
       crashSkipped: false,
+      braking: false,
     };
   }
 
