@@ -528,6 +528,11 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     drawSmokeParticles(ctx, state.crashSmoke);
   }
 
+  // Player headlights (night only) — projected forward onto road
+  if (isNightScene(state.scene)) {
+    drawPlayerHeadlights(ctx, state, W, H);
+  }
+
   // Player car
   drawCar(ctx, state, W, H);
 
