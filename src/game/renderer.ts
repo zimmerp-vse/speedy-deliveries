@@ -521,7 +521,10 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         }
         drawObstacleCar(ctx, animX, animY, spriteScale, seg.sprite.emoji);
       } else {
-        const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
+        // Cap pedestrians/road obstacles much tighter to avoid the "giant head" pop at very close range
+        const isPed = seg.sprite.type === 'pedestrian';
+        const cappedScale = Math.min(spriteScale, isPed ? 1.1 : 1.4);
+        const fSize = Math.max(16, Math.min(isPed ? 64 : 80, 60 * cappedScale));
         ctx.font = `${fSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';

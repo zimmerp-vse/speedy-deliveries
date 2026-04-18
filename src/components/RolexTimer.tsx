@@ -15,7 +15,7 @@ export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
   // Hour hand barely moves
   const hourAngle = progress * 30 + 90; // start ~3 o'clock-ish
 
-  const size = 110;
+  const size = 200;
   const cx = size / 2;
   const cy = size / 2;
 
@@ -115,35 +115,35 @@ export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
           {/* ROLEX text */}
           <text
             x={cx}
-            y={cy - 8}
+            y={cy - 14}
             textAnchor="middle"
-            fontSize="5"
+            fontSize="9"
             fontWeight="700"
             fill="#2a1a05"
             fontFamily="serif"
-            letterSpacing="0.5"
+            letterSpacing="1"
           >
             ROLEX
           </text>
           <text
             x={cx}
-            y={cy - 2.5}
+            y={cy - 5}
             textAnchor="middle"
-            fontSize="2.4"
+            fontSize="4.4"
             fill="#2a1a05"
             fontFamily="serif"
-            letterSpacing="0.3"
+            letterSpacing="0.6"
           >
             OYSTER PERPETUAL
           </text>
           <text
             x={cx}
-            y={cy + 1.2}
+            y={cy + 1}
             textAnchor="middle"
-            fontSize="2.2"
+            fontSize="4"
             fill="#2a1a05"
             fontFamily="serif"
-            letterSpacing="0.3"
+            letterSpacing="0.6"
           >
             — DATE —
           </text>
@@ -151,30 +151,30 @@ export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
           {/* Date window at 3 o'clock */}
           <g>
             <rect
-              x={cx + size / 2 - 32}
-              y={cy - 5}
-              width={12}
-              height={10}
-              rx={1}
+              x={cx + size / 2 - 56}
+              y={cy - 9}
+              width={22}
+              height={18}
+              rx={2}
               fill="#fdf6e3"
               stroke="#2a1a05"
-              strokeWidth={0.4}
+              strokeWidth={0.7}
             />
             {/* Cyclops magnifier highlight */}
             <rect
-              x={cx + size / 2 - 32}
-              y={cy - 5}
-              width={12}
-              height={10}
-              rx={1}
+              x={cx + size / 2 - 56}
+              y={cy - 9}
+              width={22}
+              height={18}
+              rx={2}
               fill="url(#cyclops)"
               opacity={0.35}
             />
             <text
-              x={cx + size / 2 - 26}
-              y={cy + 2.8}
+              x={cx + size / 2 - 45}
+              y={cy + 5}
               textAnchor="middle"
-              fontSize="7"
+              fontSize="13"
               fontWeight="700"
               fill={isLow ? '#c0392b' : '#1a1205'}
               fontFamily="serif"
@@ -186,23 +186,23 @@ export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
           {/* SUPERLATIVE CHRONOMETER */}
           <text
             x={cx}
-            y={cy + size / 4 + 4}
+            y={cy + size / 4 + 6}
             textAnchor="middle"
-            fontSize="2.2"
+            fontSize="4"
             fill="#2a1a05"
             fontFamily="serif"
-            letterSpacing="0.3"
+            letterSpacing="0.5"
           >
             SUPERLATIVE CHRONOMETER
           </text>
           <text
             x={cx}
-            y={cy + size / 4 + 7}
+            y={cy + size / 4 + 12}
             textAnchor="middle"
-            fontSize="2.2"
+            fontSize="4"
             fill="#2a1a05"
             fontFamily="serif"
-            letterSpacing="0.3"
+            letterSpacing="0.5"
           >
             OFFICIALLY CERTIFIED
           </text>

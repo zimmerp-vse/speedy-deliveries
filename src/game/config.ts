@@ -190,8 +190,8 @@ export const GAME_CONFIG = {
   // Obstacle types
   obstacles: {
     cars: ['🚗', '🚙', '🚕', '🏎️', '🚓', '🚚', '🚛', '🚜', '🚐'],
-    roadObstacles: ['🌳', '🐄', '🐑', '🪨', '🛢️'],
-    pedestrians: ['🧑‍🎓', '👨‍🎓', '👩‍🎓', '🚶', '🧑‍🦯'],
+    roadObstacles: ['🚧', '🛢️', '🚏', '⚠️', '🪧', '🧱'],
+    pedestrians: ['👷', '👷‍♂️', '👷‍♀️', '🚶', '🧑‍🔧'],
   },
   
   // Splash/fun effects for pedestrian "accidents"
