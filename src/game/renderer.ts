@@ -510,10 +510,16 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
+        // Subtle bobbing animation per-vehicle for life-like feel
+        const seed = (cur.idx * 13) % 1000;
+        const bob = Math.sin(state.gameTime * 6 + seed) * 1.2 * spriteScale;
+        const sway = Math.sin(state.gameTime * 3 + seed * 0.3) * 0.6 * spriteScale;
+        const animX = spriteX + sway;
+        const animY = spriteY + bob;
         if (isNightScene(scene)) {
-          drawOncomingHeadlights(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+          drawOncomingHeadlights(ctx, animX, animY, spriteScale, seg.sprite.emoji);
         }
-        drawObstacleCar(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+        drawObstacleCar(ctx, animX, animY, spriteScale, seg.sprite.emoji);
       } else {
         const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
         ctx.font = `${fSize}px serif`;
