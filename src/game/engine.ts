@@ -204,6 +204,7 @@ export class GameEngine {
     } else {
       s.speed = Math.max(s.speed - cfg.idleDeceleration * dt, 0);
     }
+    s.braking = !!this.controls.brake && s.speed > 0;
     
     const steerDir = (this.controls.left ? -1 : 0) + (this.controls.right ? 1 : 0);
     s.steering = steerDir;
