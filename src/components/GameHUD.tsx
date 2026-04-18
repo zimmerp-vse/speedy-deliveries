@@ -1,4 +1,5 @@
 import { Tachometer } from './Tachometer';
+import { RolexTimer } from './RolexTimer';
 
 interface GameHUDProps {
   speed: number;
@@ -6,24 +7,17 @@ interface GameHUDProps {
   round: number;
   totalRounds: number;
   timeRemaining: number;
+  totalTime?: number;
 }
 
-export function GameHUD({ speed, money, round, totalRounds, timeRemaining }: GameHUDProps) {
-  const seconds = Math.ceil(timeRemaining);
-  const isLow = seconds <= 10;
-
+export function GameHUD({ speed, money, round, totalRounds, timeRemaining, totalTime = 45 }: GameHUDProps) {
   return (
     <div className="absolute top-6 left-0 right-0 px-4 flex justify-between items-start pointer-events-none z-10">
       {/* Ferrari tachometer */}
       <Tachometer speed={speed} maxSpeed={200} />
-      
-      {/* Timer */}
-      <div className={`bg-card/80 backdrop-blur-sm rounded-lg px-3 py-2 border ${isLow ? 'border-destructive' : 'border-border'}`}>
-        <div className="font-arcade text-[10px] text-muted-foreground">TIME</div>
-        <div className={`font-display text-xl font-bold ${isLow ? 'text-destructive animate-pulse' : 'text-foreground'}`}>
-          {seconds}s
-        </div>
-      </div>
+
+      {/* Rolex Oyster Perpetual Date timer */}
+      <RolexTimer timeRemaining={timeRemaining} totalTime={totalTime} />
 
       {/* Round */}
       <div className="bg-card/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-border text-center">
