@@ -509,6 +509,9 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
+        if (isNightScene(scene)) {
+          drawOncomingHeadlights(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+        }
         drawObstacleCar(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
       } else {
         const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
