@@ -46,6 +46,7 @@ export interface GameState {
   crashSmoke: SmokeParticle[];
   crashTimer: number; // seconds since crash
   crashSkipped: boolean;
+  braking: boolean;
   collidedSprite?: { type: string; emoji: string; screenX?: number };
 }
 
@@ -509,10 +510,16 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
+        // Subtle bobbing animation per-vehicle for life-like feel
+        const seed = (cur.idx * 13) % 1000;
+        const bob = Math.sin(state.gameTime * 6 + seed) * 1.2 * spriteScale;
+        const sway = Math.sin(state.gameTime * 3 + seed * 0.3) * 0.6 * spriteScale;
+        const animX = spriteX + sway;
+        const animY = spriteY + bob;
         if (isNightScene(scene)) {
-          drawOncomingHeadlights(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+          drawOncomingHeadlights(ctx, animX, animY, spriteScale, seg.sprite.emoji);
         }
-        drawObstacleCar(ctx, spriteX, spriteY, spriteScale, seg.sprite.emoji);
+        drawObstacleCar(ctx, animX, animY, spriteScale, seg.sprite.emoji);
       } else {
         const fSize = Math.max(16, Math.min(120, 70 * spriteScale));
         ctx.font = `${fSize}px serif`;
@@ -1084,15 +1091,21 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
   drawWheel(cx + cw / 2 - 11, cy - ch * 0.42);
   drawWheel(cx + cw / 2 - 11, cy - 18);
 
-  // ===== TAIL LIGHTS (round, Ferrari signature) =====
-  const braking = state.speed < 5;
-  const tailColor = braking ? '#ff1111' : '#cc2222';
-  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 14; }
+  // ===== TAIL LIGHTS / BRAKE LIGHTS =====
+  const braking = state.braking || state.speed < 5;
+  const tailColor = braking ? '#ff2222' : '#992020';
+  if (braking) { ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 22; }
   ctx.fillStyle = tailColor;
-  ctx.beginPath(); ctx.arc(cx - cw / 2 + 12, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx - cw / 2 + 24, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + cw / 2 - 12, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + cw / 2 - 24, cy - 10, 4.5, 0, Math.PI * 2); ctx.fill();
+  const tailR = braking ? 5.5 : 4.5;
+  ctx.beginPath(); ctx.arc(cx - cw / 2 + 12, cy - 10, tailR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - cw / 2 + 24, cy - 10, tailR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + cw / 2 - 12, cy - 10, tailR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + cw / 2 - 24, cy - 10, tailR, 0, Math.PI * 2); ctx.fill();
+  // Center high-mount brake light
+  if (braking) {
+    ctx.fillStyle = '#ff4444';
+    ctx.fillRect(cx - 14, cy - ch * 0.5, 28, 3);
+  }
   ctx.shadowBlur = 0;
 
   // Reverse / fog lights
