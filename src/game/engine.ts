@@ -315,10 +315,20 @@ export class GameEngine {
 
       const obstacleX = seg.sprite.offset * 4.2;
       const lateralDist = Math.abs(s.playerX - obstacleX);
-      // Wider vehicles get a larger collision radius to match their visual size
-      const wideEmojis = ['🚚', '🚛', '🚜', '🚙'];
-      const threshold = seg.sprite.type === 'car' && wideEmojis.includes(seg.sprite.emoji ?? '') ? 0.9 : 0.65;
-      if (lateralDist > threshold) continue;
+      // Per-type collision half-widths (sum of player + obstacle half-widths in world units)
+      const playerHalfW = 0.55;
+      let obsHalfW = 0.4;
+      if (seg.sprite.type === 'car') {
+        const e = seg.sprite.emoji ?? '';
+        if (e === '🚛' || e === '🚜') obsHalfW = 0.7;        // big trucks
+        else if (e === '🚚' || e === '🚙') obsHalfW = 0.6;   // truck / hummer
+        else obsHalfW = 0.5;                                 // sedan/sports/police/taxi/van
+      } else if (seg.sprite.type === 'obstacle') {
+        obsHalfW = 0.4;
+      } else {
+        obsHalfW = 0.25; // pedestrians
+      }
+      if (lateralDist > playerHalfW + obsHalfW) continue;
 
       if (seg.sprite.type === 'pedestrian' && s.hornActive) {
         seg.sprite.active = false;
