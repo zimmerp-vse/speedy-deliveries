@@ -46,6 +46,7 @@ export interface GameState {
   crashSmoke: SmokeParticle[];
   crashTimer: number; // seconds since crash
   crashSkipped: boolean;
+  braking: boolean;
   collidedSprite?: { type: string; emoji: string; screenX?: number };
 }
 
