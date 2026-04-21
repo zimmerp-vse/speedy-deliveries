@@ -107,7 +107,7 @@ export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
 export function render(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
   const { scene, segments, position, playerX } = state;
   const N = segments.length;
-  const drawDist = 120;
+  const drawDist = Math.min(GAME_CONFIG.drawDistance, (state as any).__drawDistOverride ?? GAME_CONFIG.drawDistance);
   const baseIdx = Math.floor(position) % N;
   const horizon = H * 0.4;
 

@@ -22,6 +22,10 @@ export class GameEngine {
   private pendingCelebrationResult: RoundResult | null = null;
   private pendingCrashResult: RoundResult | null = null;
   private crashTimeout: ReturnType<typeof setTimeout> | null = null;
+  private accumulator: number = 0;
+  private readonly fixedStep: number = 1 / 60;
+  private fpsSamples: number[] = [];
+  private perfDegraded: boolean = false;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -100,6 +104,8 @@ export class GameEngine {
     this.lastSpawnSegment = -1;
     this.running = true;
     this.lastTime = performance.now();
+    this.accumulator = 0;
+    this.fpsSamples = [];
     this.loop();
   }
 
@@ -127,9 +133,32 @@ export class GameEngine {
   private loop = () => {
     if (!this.running) return;
     const now = performance.now();
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+    let frameTime = (now - this.lastTime) / 1000;
     this.lastTime = now;
-    this.update(dt);
+
+    // FPS sampling for perf guard (rolling ~120 frames)
+    this.fpsSamples.push(frameTime);
+    if (this.fpsSamples.length > 120) this.fpsSamples.shift();
+    if (!this.perfDegraded && this.fpsSamples.length >= 60) {
+      const avg = this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length;
+      if (avg > 0.028) {
+        this.perfDegraded = true;
+        (this.state as any).__drawDistOverride = 60;
+      }
+    }
+
+    // Cap accumulator so a tab-switch doesn't trigger a huge catch-up
+    this.accumulator = Math.min(this.accumulator + frameTime, 0.25);
+
+    // Run as many fixed simulation steps as fit
+    let steps = 0;
+    while (this.accumulator >= this.fixedStep && steps < 8) {
+      this.update(this.fixedStep);
+      this.accumulator -= this.fixedStep;
+      steps++;
+      if (!this.running) break;
+    }
+
     this.renderFrame();
     this.animFrame = requestAnimationFrame(this.loop);
   };
@@ -149,11 +178,11 @@ export class GameEngine {
       s.crashTimer += dt;
       // Spawn crash smoke from hood
       if (s.crashTimer < 4 && Math.random() < 0.35) {
-        const W = this.canvas.width;
+        const W = this.canvas.clientWidth;
         // Spawn from trunk (rear/bottom of car), drift up & back
         s.crashSmoke.push({
           x: W / 2 + s.steering * 40 + (Math.random() - 0.5) * 30,
-          y: this.canvas.height - 18 - Math.random() * 8,
+          y: this.canvas.clientHeight - 18 - Math.random() * 8,
           vx: (Math.random() - 0.5) * 40,
           vy: -30 - Math.random() * 50,
           size: 8 + Math.random() * 12,
@@ -224,9 +253,9 @@ export class GameEngine {
 
     // Tire smoke when steering hard at speed
     if (s.speed > 30 && Math.abs(steerDir) > 0) {
-      const W = this.canvas.width;
+      const W = this.canvas.clientWidth;
       const cx = W / 2 + s.steering * 40;
-      const cy = this.canvas.height - 10;
+      const cy = this.canvas.clientHeight - 10;
       for (let i = 0; i < 2; i++) {
         s.tireSmoke.push({
           x: cx + (steerDir > 0 ? -38 : 38) + (Math.random() - 0.5) * 10,
@@ -347,8 +376,8 @@ export class GameEngine {
   }
 
   private spawnCelebrationParticles() {
-    const W = this.canvas.width;
-    const H = this.canvas.height;
+    const W = this.canvas.clientWidth;
+    const H = this.canvas.clientHeight;
     const emojis = GAME_CONFIG.celebrationEmojis;
     for (let i = 0; i < 18; i++) {
       this.state.celebrationParticles.push({
@@ -432,8 +461,8 @@ export class GameEngine {
   }
 
   private renderFrame() {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
     this.ctx.clearRect(0, 0, w, h);
     render(this.ctx, this.state, w, h);
   }
