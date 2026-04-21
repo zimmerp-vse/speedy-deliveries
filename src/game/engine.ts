@@ -178,11 +178,11 @@ export class GameEngine {
       s.crashTimer += dt;
       // Spawn crash smoke from hood
       if (s.crashTimer < 4 && Math.random() < 0.35) {
-        const W = this.canvas.width;
+        const W = this.canvas.clientWidth;
         // Spawn from trunk (rear/bottom of car), drift up & back
         s.crashSmoke.push({
           x: W / 2 + s.steering * 40 + (Math.random() - 0.5) * 30,
-          y: this.canvas.height - 18 - Math.random() * 8,
+          y: this.canvas.clientHeight - 18 - Math.random() * 8,
           vx: (Math.random() - 0.5) * 40,
           vy: -30 - Math.random() * 50,
           size: 8 + Math.random() * 12,
@@ -253,9 +253,9 @@ export class GameEngine {
 
     // Tire smoke when steering hard at speed
     if (s.speed > 30 && Math.abs(steerDir) > 0) {
-      const W = this.canvas.width;
+      const W = this.canvas.clientWidth;
       const cx = W / 2 + s.steering * 40;
-      const cy = this.canvas.height - 10;
+      const cy = this.canvas.clientHeight - 10;
       for (let i = 0; i < 2; i++) {
         s.tireSmoke.push({
           x: cx + (steerDir > 0 ? -38 : 38) + (Math.random() - 0.5) * 10,
@@ -376,8 +376,8 @@ export class GameEngine {
   }
 
   private spawnCelebrationParticles() {
-    const W = this.canvas.width;
-    const H = this.canvas.height;
+    const W = this.canvas.clientWidth;
+    const H = this.canvas.clientHeight;
     const emojis = GAME_CONFIG.celebrationEmojis;
     for (let i = 0; i < 18; i++) {
       this.state.celebrationParticles.push({
@@ -461,8 +461,8 @@ export class GameEngine {
   }
 
   private renderFrame() {
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
     this.ctx.clearRect(0, 0, w, h);
     render(this.ctx, this.state, w, h);
   }
