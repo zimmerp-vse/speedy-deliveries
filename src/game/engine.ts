@@ -22,6 +22,10 @@ export class GameEngine {
   private pendingCelebrationResult: RoundResult | null = null;
   private pendingCrashResult: RoundResult | null = null;
   private crashTimeout: ReturnType<typeof setTimeout> | null = null;
+  private accumulator: number = 0;
+  private readonly fixedStep: number = 1 / 60;
+  private fpsSamples: number[] = [];
+  private perfDegraded: boolean = false;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -127,9 +131,32 @@ export class GameEngine {
   private loop = () => {
     if (!this.running) return;
     const now = performance.now();
-    const dt = Math.min((now - this.lastTime) / 1000, 0.05);
+    let frameTime = (now - this.lastTime) / 1000;
     this.lastTime = now;
-    this.update(dt);
+
+    // FPS sampling for perf guard (rolling ~120 frames)
+    this.fpsSamples.push(frameTime);
+    if (this.fpsSamples.length > 120) this.fpsSamples.shift();
+    if (!this.perfDegraded && this.fpsSamples.length >= 60) {
+      const avg = this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length;
+      if (avg > 0.028) {
+        this.perfDegraded = true;
+        (this.state as any).__drawDistOverride = 60;
+      }
+    }
+
+    // Cap accumulator so a tab-switch doesn't trigger a huge catch-up
+    this.accumulator = Math.min(this.accumulator + frameTime, 0.25);
+
+    // Run as many fixed simulation steps as fit
+    let steps = 0;
+    while (this.accumulator >= this.fixedStep && steps < 8) {
+      this.update(this.fixedStep);
+      this.accumulator -= this.fixedStep;
+      steps++;
+      if (!this.running) break;
+    }
+
     this.renderFrame();
     this.animFrame = requestAnimationFrame(this.loop);
   };
