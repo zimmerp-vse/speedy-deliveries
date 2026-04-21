@@ -104,6 +104,8 @@ export class GameEngine {
     this.lastSpawnSegment = -1;
     this.running = true;
     this.lastTime = performance.now();
+    this.accumulator = 0;
+    this.fpsSamples = [];
     this.loop();
   }
 
