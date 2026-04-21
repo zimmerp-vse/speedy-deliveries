@@ -18,7 +18,7 @@ export const GAME_CONFIG = {
   // Road settings
   roadWidth: 2000,
   segmentLength: 200,
-  drawDistance: 150,
+  drawDistance: 90,
   laneCount: 3,
   
   // Obstacle spawn chances per advanced road segment
