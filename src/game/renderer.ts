@@ -925,22 +925,32 @@ function drawHummer(ctx: CanvasRenderingContext2D, x: number, y: number, s: numb
 }
 
 function drawVan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  // Rear-view delivery van: tall boxy back doors, symmetrical
   const w = 76 * s, h = 60 * s; const cx = x, cy = y;
-  ctx.fillStyle = '#e0e7ff';
-  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h, w, h - 6 * s, [10 * s, 10 * s, 4 * s, 4 * s]); ctx.fill();
+  // Roof line (slight peek)
   ctx.fillStyle = '#c7d2fe';
-  ctx.beginPath();
-  ctx.moveTo(cx + w / 2, cy - h * 0.55);
-  ctx.lineTo(cx + w / 2, cy - 6 * s);
-  ctx.lineTo(cx + w * 0.3, cy - 6 * s);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = 'rgba(120,180,210,0.8)';
-  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h * 0.85, w * 0.5, h * 0.3, 2 * s); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(cx + w * 0.1, cy - h * 0.85, w * 0.32, h * 0.28, 2 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.48, cy - h, w * 0.96, h * 0.1, [8 * s, 8 * s, 0, 0]); ctx.fill();
+  // Main body
+  ctx.fillStyle = '#e0e7ff';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.92, w, h * 0.84, [6 * s, 6 * s, 4 * s, 4 * s]); ctx.fill();
+  // Top window strip (rear cargo windows)
+  ctx.fillStyle = 'rgba(120,180,210,0.75)';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h * 0.82, w * 0.4, h * 0.22, 2 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + w * 0.02, cy - h * 0.82, w * 0.4, h * 0.22, 2 * s); ctx.fill();
+  // Vertical seam between rear doors
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, cy - h * 0.55); ctx.lineTo(cx, cy - 10 * s); ctx.stroke();
+  // Door handles
+  ctx.fillStyle = '#6b7280';
+  ctx.fillRect(cx - w * 0.1, cy - h * 0.32, 4 * s, 1.5 * s);
+  ctx.fillRect(cx + w * 0.06, cy - h * 0.32, 4 * s, 1.5 * s);
+  // Brand stripe
   ctx.fillStyle = '#4f46e5';
-  ctx.fillRect(cx - w / 2, cy - h * 0.42, w, 3 * s);
+  ctx.fillRect(cx - w / 2, cy - h * 0.45, w, 3 * s);
+  // Tail lights & wheels & plate
   tailLights(ctx, cx, cy, w, s);
   wheels(ctx, cx, cy, w, s, 8);
+  plate(ctx, cx, cy, s);
 }
 
 function shadeColor(hex: string, percent: number): string {
