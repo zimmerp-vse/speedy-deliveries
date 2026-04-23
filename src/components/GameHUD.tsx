@@ -139,6 +139,34 @@ export function GameHUD({
           />
         </div>
       )}
+
+      {/* Mute toggle */}
+      <MuteButton />
     </>
+  );
+}
+
+function MuteButton() {
+  const [muted, setMuted] = useState(sounds.isMuted());
+  return (
+    <button
+      type="button"
+      aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+      onClick={() => {
+        sounds.ensureContext();
+        const next = !muted;
+        sounds.setMuted(next);
+        setMuted(next);
+      }}
+      className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-foreground/80 backdrop-blur-sm transition hover:text-foreground"
+      style={{
+        background: 'linear-gradient(145deg, #0a0604 0%, #1a1208 45%, #0a0604 100%)',
+        borderColor: '#8a6418',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(245,210,113,0.35)',
+        color: '#e6c976',
+      }}
+    >
+      {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+    </button>
   );
 }
