@@ -1,6 +1,8 @@
 import { Tachometer } from './Tachometer';
 import { RolexTimer } from './RolexTimer';
 import { useEffect, useState } from 'react';
+import { sounds } from '@/game/sounds';
+import { Volume2, VolumeX } from 'lucide-react';
 
 interface GameHUDProps {
   speed: number;
