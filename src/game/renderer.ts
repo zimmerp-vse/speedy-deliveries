@@ -815,64 +815,82 @@ function drawPolice(ctx: CanvasRenderingContext2D, x: number, y: number, s: numb
 }
 
 function drawTruck(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, cabColor: string, big: boolean) {
+  // Rear-view box truck: cargo box facing camera, cab roof peeking above
   const w = (big ? 92 : 84) * s, h = (big ? 70 : 60) * s; const cx = x, cy = y;
+  // Cab roof above the box
+  const cg = ctx.createLinearGradient(cx, cy - h, cx, cy - h * 0.7);
+  cg.addColorStop(0, cabColor); cg.addColorStop(1, shadeColor(cabColor, -30));
+  ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h, w * 0.84, h * 0.18, [5 * s, 5 * s, 0, 0]); ctx.fill();
+  // Cargo box (rear face)
   ctx.fillStyle = '#e5e7eb';
-  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h, w * 0.78, h - 6 * s, [3 * s, 0, 4 * s, 4 * s]); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
-  for (let i = 1; i < 4; i++) {
-    const px = cx - w / 2 + (w * 0.78) * (i / 4);
-    ctx.beginPath(); ctx.moveTo(px, cy - h + 4 * s); ctx.lineTo(px, cy - 8 * s); ctx.stroke();
-  }
-  const cabW = w * 0.26;
-  const cabX = cx + w / 2 - cabW;
-  const g = ctx.createLinearGradient(cabX, cy - h, cabX, cy);
-  g.addColorStop(0, cabColor); g.addColorStop(1, shadeColor(cabColor, -30));
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.roundRect(cabX, cy - h * 0.78, cabW, h * 0.78 - 6 * s, [4 * s, 4 * s, 4 * s, 4 * s]); ctx.fill();
-  ctx.fillStyle = 'rgba(150,210,240,0.8)';
-  ctx.beginPath(); ctx.roundRect(cabX + 2 * s, cy - h * 0.7, cabW - 4 * s, h * 0.28, 2 * s); ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.fillRect(cabX + cabW - 3 * s, cy - h * 0.35, 3 * s, h * 0.2);
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.82, w, h * 0.74, [3 * s, 3 * s, 4 * s, 4 * s]); ctx.fill();
+  // Vertical seam (rear doors split)
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, cy - h * 0.82 + 2 * s); ctx.lineTo(cx, cy - 10 * s); ctx.stroke();
+  // Door handles
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillRect(cx - w * 0.1, cy - h * 0.45, 4 * s, 1.5 * s);
+  ctx.fillRect(cx + w * 0.06, cy - h * 0.45, 4 * s, 1.5 * s);
+  // Side accent stripe in cab color
+  ctx.fillStyle = cabColor;
+  ctx.fillRect(cx - w / 2, cy - h * 0.3, w, 2 * s);
+  // Bumper
   ctx.fillStyle = '#9ca3af';
   ctx.fillRect(cx - w / 2, cy - 8 * s, w, 3 * s);
-  ctx.fillStyle = '#ff2222'; ctx.shadowColor = '#ff0000'; ctx.shadowBlur = 5 * s;
-  ctx.fillRect(cx - w / 2 + 1 * s, cy - 14 * s, 4 * s, 5 * s);
-  ctx.shadowBlur = 0;
+  // Tail lights
+  tailLights(ctx, cx, cy, w, s);
+  // Wheels (rear axles only — visible from behind)
   ctx.fillStyle = '#0a0a0a';
   const wheelY = cy - 4 * s;
-  ctx.fillRect(cx - w / 2 + 2 * s, wheelY, 6 * s, 8 * s);
-  ctx.fillRect(cx - w / 2 + 14 * s, wheelY, 6 * s, 8 * s);
-  ctx.fillRect(cabX, wheelY, 6 * s, 8 * s);
-  if (big) ctx.fillRect(cabX + cabW - 6 * s, wheelY, 6 * s, 8 * s);
+  ctx.fillRect(cx - w / 2 - 2 * s, wheelY, 6 * s, 8 * s);
+  ctx.fillRect(cx + w / 2 - 4 * s, wheelY, 6 * s, 8 * s);
+  if (big) {
+    ctx.fillRect(cx - w / 2 + 5 * s, wheelY, 6 * s, 8 * s);
+    ctx.fillRect(cx + w / 2 - 11 * s, wheelY, 6 * s, 8 * s);
+  }
+  plate(ctx, cx, cy, s);
 }
 
 function drawGarbage(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  // Rear-view garbage truck: green hopper with lift arms visible from behind
   const w = 84 * s, h = 64 * s; const cx = x, cy = y;
+  // Cab roof peek
+  ctx.fillStyle = '#ca8a04';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.38, cy - h, w * 0.76, h * 0.16, [4 * s, 4 * s, 0, 0]); ctx.fill();
+  // Main hopper body (tapered slightly wider at top)
   ctx.fillStyle = '#15803d';
   ctx.beginPath();
-  ctx.moveTo(cx - w / 2, cy - h * 0.85);
-  ctx.lineTo(cx - w * 0.42, cy - h);
-  ctx.lineTo(cx + w * 0.18, cy - h);
-  ctx.lineTo(cx + w * 0.18, cy - 8 * s);
-  ctx.lineTo(cx - w / 2, cy - 8 * s);
+  ctx.moveTo(cx - w / 2, cy - 8 * s);
+  ctx.lineTo(cx - w * 0.46, cy - h * 0.84);
+  ctx.lineTo(cx + w * 0.46, cy - h * 0.84);
+  ctx.lineTo(cx + w / 2, cy - 8 * s);
   ctx.closePath(); ctx.fill();
+  // Hopper rear panel (lighter green)
+  ctx.fillStyle = '#166534';
+  ctx.beginPath();
+  ctx.roundRect(cx - w * 0.42, cy - h * 0.7, w * 0.84, h * 0.5, 3 * s);
+  ctx.fill();
+  // Vertical ribs
   ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
   for (let i = 1; i < 5; i++) {
-    const px = cx - w / 2 + (w * 0.68) * (i / 5);
-    ctx.beginPath(); ctx.moveTo(px, cy - h * 0.95); ctx.lineTo(px, cy - 9 * s); ctx.stroke();
+    const px = cx - w * 0.42 + (w * 0.84) * (i / 5);
+    ctx.beginPath(); ctx.moveTo(px, cy - h * 0.7 + 2 * s); ctx.lineTo(px, cy - h * 0.22); ctx.stroke();
   }
-  ctx.fillStyle = '#ca8a04';
-  ctx.beginPath(); ctx.roundRect(cx + w * 0.18, cy - h * 0.7, w * 0.32, h * 0.7 - 8 * s, [4 * s, 4 * s, 3 * s, 3 * s]); ctx.fill();
-  ctx.fillStyle = 'rgba(150,210,240,0.8)';
-  ctx.beginPath(); ctx.roundRect(cx + w * 0.2, cy - h * 0.62, w * 0.28, h * 0.28, 2 * s); ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.fillRect(cx - w / 2 - 4 * s, cy - h * 0.5, 4 * s, h * 0.4);
+  // Lift arms (hydraulics) on either side
+  ctx.fillStyle = '#1f2937';
+  ctx.fillRect(cx - w * 0.5, cy - h * 0.5, 3 * s, h * 0.42);
+  ctx.fillRect(cx + w * 0.5 - 3 * s, cy - h * 0.5, 3 * s, h * 0.42);
+  // Bumper
   ctx.fillStyle = '#6b7280';
   ctx.fillRect(cx - w / 2, cy - 8 * s, w, 3 * s);
+  // Tail lights
+  tailLights(ctx, cx, cy, w, s);
+  // Wheels
   ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(cx - w / 2 + 4 * s, cy - 4 * s, 7 * s, 9 * s);
-  ctx.fillRect(cx - w * 0.05, cy - 4 * s, 7 * s, 9 * s);
-  ctx.fillRect(cx + w * 0.32, cy - 4 * s, 7 * s, 9 * s);
+  ctx.fillRect(cx - w / 2 - 2 * s, cy - 4 * s, 7 * s, 9 * s);
+  ctx.fillRect(cx + w / 2 - 5 * s, cy - 4 * s, 7 * s, 9 * s);
+  plate(ctx, cx, cy, s);
 }
 
 function drawHummer(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
@@ -907,22 +925,32 @@ function drawHummer(ctx: CanvasRenderingContext2D, x: number, y: number, s: numb
 }
 
 function drawVan(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  // Rear-view delivery van: tall boxy back doors, symmetrical
   const w = 76 * s, h = 60 * s; const cx = x, cy = y;
-  ctx.fillStyle = '#e0e7ff';
-  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h, w, h - 6 * s, [10 * s, 10 * s, 4 * s, 4 * s]); ctx.fill();
+  // Roof line (slight peek)
   ctx.fillStyle = '#c7d2fe';
-  ctx.beginPath();
-  ctx.moveTo(cx + w / 2, cy - h * 0.55);
-  ctx.lineTo(cx + w / 2, cy - 6 * s);
-  ctx.lineTo(cx + w * 0.3, cy - 6 * s);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = 'rgba(120,180,210,0.8)';
-  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h * 0.85, w * 0.5, h * 0.3, 2 * s); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(cx + w * 0.1, cy - h * 0.85, w * 0.32, h * 0.28, 2 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.48, cy - h, w * 0.96, h * 0.1, [8 * s, 8 * s, 0, 0]); ctx.fill();
+  // Main body
+  ctx.fillStyle = '#e0e7ff';
+  ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h * 0.92, w, h * 0.84, [6 * s, 6 * s, 4 * s, 4 * s]); ctx.fill();
+  // Top window strip (rear cargo windows)
+  ctx.fillStyle = 'rgba(120,180,210,0.75)';
+  ctx.beginPath(); ctx.roundRect(cx - w * 0.42, cy - h * 0.82, w * 0.4, h * 0.22, 2 * s); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(cx + w * 0.02, cy - h * 0.82, w * 0.4, h * 0.22, 2 * s); ctx.fill();
+  // Vertical seam between rear doors
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx, cy - h * 0.55); ctx.lineTo(cx, cy - 10 * s); ctx.stroke();
+  // Door handles
+  ctx.fillStyle = '#6b7280';
+  ctx.fillRect(cx - w * 0.1, cy - h * 0.32, 4 * s, 1.5 * s);
+  ctx.fillRect(cx + w * 0.06, cy - h * 0.32, 4 * s, 1.5 * s);
+  // Brand stripe
   ctx.fillStyle = '#4f46e5';
-  ctx.fillRect(cx - w / 2, cy - h * 0.42, w, 3 * s);
+  ctx.fillRect(cx - w / 2, cy - h * 0.45, w, 3 * s);
+  // Tail lights & wheels & plate
   tailLights(ctx, cx, cy, w, s);
   wheels(ctx, cx, cy, w, s, 8);
+  plate(ctx, cx, cy, s);
 }
 
 function shadeColor(hex: string, percent: number): string {

@@ -1,5 +1,6 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
 import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
+import { sounds } from './sounds';
 
 export interface Controls {
   left: boolean;
@@ -26,6 +27,9 @@ export class GameEngine {
   private readonly fixedStep: number = 1 / 60;
   private fpsSamples: number[] = [];
   private perfDegraded: boolean = false;
+  private lastTickSecond: number = -1;
+  private lastHornState: boolean = false;
+  private lastScreechState: boolean = false;
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -106,6 +110,9 @@ export class GameEngine {
     this.lastTime = performance.now();
     this.accumulator = 0;
     this.fpsSamples = [];
+    this.lastTickSecond = -1;
+    sounds.ensureContext();
+    sounds.startEngine();
     this.loop();
   }
 
@@ -314,7 +321,25 @@ export class GameEngine {
     }
     
     this.checkCollisions(playerSegIdx);
-    
+
+    // --- Audio sync ---
+    sounds.setEngineSpeed(s.speed / GAME_CONFIG.maxSpeed);
+    if (s.hornActive !== this.lastHornState) {
+      sounds.setHorn(s.hornActive);
+      this.lastHornState = s.hornActive;
+    }
+    const screeching = s.speed > 30 && s.steering !== 0;
+    if (screeching !== this.lastScreechState) {
+      sounds.setScreech(screeching);
+      this.lastScreechState = screeching;
+    }
+    // Countdown ticks for last 5 seconds
+    const sec = Math.ceil(s.timeRemaining);
+    if (sec <= 5 && sec > 0 && sec !== this.lastTickSecond) {
+      sounds.playTick(sec === 1);
+      this.lastTickSecond = sec;
+    }
+
     this.onSpeedUpdate?.(s.speed);
     this.onMoneyUpdate?.(this.gameData.totalMoney);
     this.onTimeUpdate?.(s.timeRemaining);
@@ -445,10 +470,20 @@ export class GameEngine {
     };
     this.gameData.rounds.push(result);
 
+    // Stop continuous SFX once the round outcome is decided
+    sounds.setHorn(false); this.lastHornState = false;
+    sounds.setScreech(false); this.lastScreechState = false;
+    sounds.setEngineSpeed(0);
+
     if (success) {
       this.pendingCelebrationResult = result;
+      sounds.playDelivery();
+      sounds.stopEngine();
       return;
     }
+
+    sounds.playCrash();
+    sounds.stopEngine();
 
     // Crash: keep the loop running so crash scene renders, auto-skip after 4s
     this.pendingCrashResult = result;
@@ -467,8 +502,11 @@ export class GameEngine {
     render(this.ctx, this.state, w, h);
   }
 
-  destroy() { 
+  destroy() {
     this.stop();
     if (this.crashTimeout) clearTimeout(this.crashTimeout);
+    sounds.setHorn(false);
+    sounds.setScreech(false);
+    sounds.stopEngine();
   }
 }
