@@ -470,10 +470,20 @@ export class GameEngine {
     };
     this.gameData.rounds.push(result);
 
+    // Stop continuous SFX once the round outcome is decided
+    sounds.setHorn(false); this.lastHornState = false;
+    sounds.setScreech(false); this.lastScreechState = false;
+    sounds.setEngineSpeed(0);
+
     if (success) {
       this.pendingCelebrationResult = result;
+      sounds.playDelivery();
+      sounds.stopEngine();
       return;
     }
+
+    sounds.playCrash();
+    sounds.stopEngine();
 
     // Crash: keep the loop running so crash scene renders, auto-skip after 4s
     this.pendingCrashResult = result;
