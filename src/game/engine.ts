@@ -321,7 +321,25 @@ export class GameEngine {
     }
     
     this.checkCollisions(playerSegIdx);
-    
+
+    // --- Audio sync ---
+    sounds.setEngineSpeed(s.speed / GAME_CONFIG.maxSpeed);
+    if (s.hornActive !== this.lastHornState) {
+      sounds.setHorn(s.hornActive);
+      this.lastHornState = s.hornActive;
+    }
+    const screeching = s.speed > 30 && s.steering !== 0;
+    if (screeching !== this.lastScreechState) {
+      sounds.setScreech(screeching);
+      this.lastScreechState = screeching;
+    }
+    // Countdown ticks for last 5 seconds
+    const sec = Math.ceil(s.timeRemaining);
+    if (sec <= 5 && sec > 0 && sec !== this.lastTickSecond) {
+      sounds.playTick(sec === 1);
+      this.lastTickSecond = sec;
+    }
+
     this.onSpeedUpdate?.(s.speed);
     this.onMoneyUpdate?.(this.gameData.totalMoney);
     this.onTimeUpdate?.(s.timeRemaining);
