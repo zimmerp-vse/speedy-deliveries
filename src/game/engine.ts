@@ -502,8 +502,11 @@ export class GameEngine {
     render(this.ctx, this.state, w, h);
   }
 
-  destroy() { 
+  destroy() {
     this.stop();
     if (this.crashTimeout) clearTimeout(this.crashTimeout);
+    sounds.setHorn(false);
+    sounds.setScreech(false);
+    sounds.stopEngine();
   }
 }
