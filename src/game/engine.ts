@@ -27,6 +27,9 @@ export class GameEngine {
   private readonly fixedStep: number = 1 / 60;
   private fpsSamples: number[] = [];
   private perfDegraded: boolean = false;
+  private lastTickSecond: number = -1;
+  private lastHornState: boolean = false;
+  private lastScreechState: boolean = false;
   
   private currentRound: number = 0;
   private gameData: GameData;
