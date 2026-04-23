@@ -1,9 +1,10 @@
 interface RolexTimerProps {
   timeRemaining: number;
   totalTime: number;
+  size?: number;
 }
 
-export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
+export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerProps) {
   const seconds = Math.ceil(timeRemaining);
   const isLow = seconds <= 10;
   // Map remaining time to a clock position: full = 12 o'clock, empty = 12 o'clock again (one full sweep)
@@ -15,7 +16,6 @@ export function RolexTimer({ timeRemaining, totalTime }: RolexTimerProps) {
   // Hour hand barely moves
   const hourAngle = progress * 30 + 90; // start ~3 o'clock-ish
 
-  const size = 200;
   const cx = size / 2;
   const cy = size / 2;
 
