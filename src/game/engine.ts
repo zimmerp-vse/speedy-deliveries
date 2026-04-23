@@ -1,5 +1,6 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
 import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
+import { sounds } from './sounds';
 
 export interface Controls {
   left: boolean;
