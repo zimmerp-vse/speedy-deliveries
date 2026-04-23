@@ -107,6 +107,9 @@ export class GameEngine {
     this.lastTime = performance.now();
     this.accumulator = 0;
     this.fpsSamples = [];
+    this.lastTickSecond = -1;
+    sounds.ensureContext();
+    sounds.startEngine();
     this.loop();
   }
 
