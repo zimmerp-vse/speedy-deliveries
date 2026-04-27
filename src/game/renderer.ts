@@ -971,7 +971,11 @@ function shadeColor(hex: string, percent: number): string {
 
 function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
   const baseCx = W / 2 + state.steering * 40;
-  const cy = H - 10;
+  // Bouncy suspension malfunction — vertical hop
+  const bounce = state.malfunction?.kind === 'bouncy'
+    ? Math.sin(state.gameTime * 14) * 8
+    : 0;
+  const cy = H - 10 + bounce;
   const cw = 140, ch = 78;
 
   // Ground shadow (drawn flat, before rotation)
