@@ -559,6 +559,33 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   // Tire smoke
   drawSmokeParticles(ctx, state.tireSmoke);
 
+  // Malfunction label overlay
+  if (state.malfunction && state.malfunction.labelTimer > 0) {
+    const alpha = Math.min(1, state.malfunction.labelTimer / 0.4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = 'bold 22px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const text = state.malfunction.label;
+    const tw = ctx.measureText(text).width + 32;
+    const tx = W / 2;
+    const ty = H * 0.32;
+    ctx.fillStyle = 'rgba(20,8,8,0.85)';
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    (ctx as CanvasRenderingContext2D & { roundRect: (x: number, y: number, w: number, h: number, r: number) => void })
+      .roundRect(tx - tw / 2, ty - 22, tw, 44, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffd97a';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 6;
+    ctx.fillText(text, tx, ty);
+    ctx.restore();
+  }
+
   // Crash scene overlay (flash, text, collided object — no smoke here)
   if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
     drawCrashScene(ctx, state, W, H);
