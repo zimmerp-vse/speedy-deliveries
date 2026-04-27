@@ -361,6 +361,10 @@ export class GameEngine {
       s.malfunction.timer -= dt;
       s.malfunction.labelTimer = Math.max(0, s.malfunction.labelTimer - dt);
 
+      // Force the car to slow down rapidly — mechanical failure!
+      s.speed = Math.max(0, s.speed - GAME_CONFIG.braking * 1.4 * dt);
+      this.cruiseEnabled = false;
+
       // Continuous side-effects per kind
       if (s.malfunction.kind === 'smoke' && s.speed > 5) {
         // Black smoke from the hood — spawn a couple particles per frame
