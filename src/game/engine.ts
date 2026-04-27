@@ -361,6 +361,10 @@ export class GameEngine {
       s.malfunction.timer -= dt;
       s.malfunction.labelTimer = Math.max(0, s.malfunction.labelTimer - dt);
 
+      // Force the car to slow down rapidly — mechanical failure!
+      s.speed = Math.max(0, s.speed - GAME_CONFIG.braking * 1.4 * dt);
+      this.cruiseEnabled = false;
+
       // Continuous side-effects per kind
       if (s.malfunction.kind === 'smoke' && s.speed > 5) {
         // Black smoke from the hood — spawn a couple particles per frame
@@ -380,10 +384,24 @@ export class GameEngine {
         }
       }
 
+      // Once we've coasted to a stop, end the round like a crash
+      if (s.speed <= 0.5) {
+        s.isAccident = true;
+        s.crashTimer = 0;
+        s.speed = 0;
+        s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.endRound(false, 'obstacle');
+        return;
+      }
+
       if (s.malfunction.timer <= 0) {
-        s.malfunction = undefined;
-        // Schedule next attempt 10-25s later
-        this.nextMalfunctionAt = s.gameTime + 10 + Math.random() * 15;
+        // Timer ran out before fully stopping — still treat as breakdown
+        s.isAccident = true;
+        s.crashTimer = 0;
+        s.speed = 0;
+        s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.endRound(false, 'obstacle');
+        return;
       }
       return;
     }
