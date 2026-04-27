@@ -114,6 +114,7 @@ export class GameEngine {
     this.lastTickSecond = -1;
     // First malfunction can happen 8-22s into the round
     this.nextMalfunctionAt = 8 + Math.random() * 14;
+    sounds.ensureContext();
     sounds.startEngine();
     this.loop();
   }
