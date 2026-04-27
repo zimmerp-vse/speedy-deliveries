@@ -48,6 +48,14 @@ export interface GameState {
   crashSkipped: boolean;
   braking: boolean;
   collidedSprite?: { type: string; emoji: string; screenX?: number };
+  // Mechanical malfunction (random comedic failure during driving)
+  malfunction?: {
+    kind: 'smoke' | 'wheel' | 'backfire' | 'bouncy';
+    timer: number;        // seconds remaining
+    missingWheel?: 0 | 1 | 2 | 3; // index of detached wheel for 'wheel'
+    label: string;        // funny label shown briefly
+    labelTimer: number;   // seconds remaining for the label overlay
+  };
 }
 
 export interface RoadSegment {
