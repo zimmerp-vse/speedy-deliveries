@@ -325,6 +325,9 @@ export class GameEngine {
     
     this.checkCollisions(playerSegIdx);
 
+    // --- Mechanical malfunctions (random, comedic) ---
+    this.updateMalfunction(dt);
+
     // --- Audio sync ---
     sounds.setEngineSpeed(s.speed / GAME_CONFIG.maxSpeed);
     if (s.hornActive !== this.lastHornState) {
