@@ -113,7 +113,7 @@ class SoundManager {
 
     // Soft clip for that aggressive turbo edge
     const dist = ctx.createWaveShaper();
-    dist.curve = this.buildDistortionCurve(8);
+    dist.curve = this.buildDistortionCurve(8) as unknown as Float32Array;
     dist.oversample = '4x';
 
     const gain = ctx.createGain();
@@ -260,7 +260,7 @@ class SoundManager {
       const sFilt = ctx.createBiquadFilter();
       sFilt.type = 'bandpass'; sFilt.frequency.value = 2400; sFilt.Q.value = 5;
       const sDist = ctx.createWaveShaper();
-      sDist.curve = this.buildDistortionCurve(6);
+      sDist.curve = this.buildDistortionCurve(6) as unknown as Float32Array;
       const sGain = ctx.createGain();
       sGain.gain.value = 0;
       sGain.gain.linearRampToValueAtTime(0.12, t0 + 0.03);
@@ -313,7 +313,7 @@ class SoundManager {
     const bg = ctx.createGain();
     bg.gain.setValueAtTime(0.55, t);
     bg.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-    const bDist = ctx.createWaveShaper(); bDist.curve = this.buildDistortionCurve(10);
+    const bDist = ctx.createWaveShaper(); bDist.curve = this.buildDistortionCurve(10) as unknown as Float32Array;
     boom.connect(bDist); bDist.connect(bg); bg.connect(this.master);
     boom.start(t); boom.stop(t + 0.85);
 
@@ -390,7 +390,7 @@ class SoundManager {
 
       // Distortion = vocal strain
       const strain = ctx.createWaveShaper();
-      strain.curve = this.buildDistortionCurve(15);
+      strain.curve = this.buildDistortionCurve(15) as unknown as Float32Array;
 
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, t);
@@ -573,7 +573,7 @@ class SoundManager {
     pop.type = 'square';
     pop.frequency.setValueAtTime(180, t);
     pop.frequency.exponentialRampToValueAtTime(50, t + 0.15);
-    const dist = ctx.createWaveShaper(); dist.curve = this.buildDistortionCurve(8);
+    const dist = ctx.createWaveShaper(); dist.curve = this.buildDistortionCurve(8) as unknown as Float32Array;
     const pg = ctx.createGain();
     pg.gain.setValueAtTime(0.5, t);
     pg.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
