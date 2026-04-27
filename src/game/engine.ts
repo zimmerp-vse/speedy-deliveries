@@ -30,6 +30,7 @@ export class GameEngine {
   private lastTickSecond: number = -1;
   private lastHornState: boolean = false;
   private lastScreechState: boolean = false;
+  private nextMalfunctionAt: number = 0; // gameTime threshold to attempt next malfunction
   
   private currentRound: number = 0;
   private gameData: GameData;
