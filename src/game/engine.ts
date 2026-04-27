@@ -30,6 +30,7 @@ export class GameEngine {
   private lastTickSecond: number = -1;
   private lastHornState: boolean = false;
   private lastScreechState: boolean = false;
+  private nextMalfunctionAt: number = 0; // gameTime threshold to attempt next malfunction
   
   private currentRound: number = 0;
   private gameData: GameData;
@@ -111,6 +112,8 @@ export class GameEngine {
     this.accumulator = 0;
     this.fpsSamples = [];
     this.lastTickSecond = -1;
+    // First malfunction can happen 8-22s into the round
+    this.nextMalfunctionAt = 8 + Math.random() * 14;
     sounds.ensureContext();
     sounds.startEngine();
     this.loop();
@@ -322,6 +325,9 @@ export class GameEngine {
     
     this.checkCollisions(playerSegIdx);
 
+    // --- Mechanical malfunctions (random, comedic) ---
+    this.updateMalfunction(dt);
+
     // --- Audio sync ---
     sounds.setEngineSpeed(s.speed / GAME_CONFIG.maxSpeed);
     if (s.hornActive !== this.lastHornState) {
@@ -343,6 +349,89 @@ export class GameEngine {
     this.onSpeedUpdate?.(s.speed);
     this.onMoneyUpdate?.(this.gameData.totalMoney);
     this.onTimeUpdate?.(s.timeRemaining);
+  }
+
+  private updateMalfunction(dt: number) {
+    const s = this.state;
+    // Don't trigger while crashed, delivering, celebrating, or barely moving
+    if (s.isAccident || s.isDelivery || s.celebrating) return;
+
+    // Tick down active malfunction
+    if (s.malfunction) {
+      s.malfunction.timer -= dt;
+      s.malfunction.labelTimer = Math.max(0, s.malfunction.labelTimer - dt);
+
+      // Continuous side-effects per kind
+      if (s.malfunction.kind === 'smoke' && s.speed > 5) {
+        // Black smoke from the hood — spawn a couple particles per frame
+        const W = this.canvas.clientWidth;
+        const H = this.canvas.clientHeight;
+        const cx = W / 2 + s.steering * 40;
+        if (Math.random() < 0.55) {
+          s.crashSmoke.push({
+            x: cx + (Math.random() - 0.5) * 30,
+            y: H - 55 - Math.random() * 6,
+            vx: (Math.random() - 0.5) * 30,
+            vy: -50 - Math.random() * 40,
+            size: 7 + Math.random() * 9,
+            alpha: 0.6 + Math.random() * 0.3,
+            color: Math.random() < 0.7 ? '#1a1a1a' : '#3a3a3a',
+          });
+        }
+      }
+
+      if (s.malfunction.timer <= 0) {
+        s.malfunction = undefined;
+        // Schedule next attempt 10-25s later
+        this.nextMalfunctionAt = s.gameTime + 10 + Math.random() * 15;
+      }
+      return;
+    }
+
+    // Don't roll new malfunctions until threshold and only when actually driving
+    if (s.gameTime < this.nextMalfunctionAt || s.speed < 25) return;
+
+    // Roll for a malfunction (~25% chance once threshold hits, retry every ~2s otherwise)
+    if (Math.random() > 0.25) {
+      this.nextMalfunctionAt = s.gameTime + 2;
+      return;
+    }
+
+    const r = Math.random();
+    if (r < 0.4) {
+      s.malfunction = {
+        kind: 'smoke',
+        timer: 4 + Math.random() * 3,
+        label: '💨 ENGINE OVERHEATING!',
+        labelTimer: 2.5,
+      };
+      sounds.playMalfunction();
+    } else if (r < 0.7) {
+      s.malfunction = {
+        kind: 'wheel',
+        timer: 5 + Math.random() * 3,
+        missingWheel: Math.floor(Math.random() * 4) as 0 | 1 | 2 | 3,
+        label: '🛞 LOST A WHEEL!',
+        labelTimer: 2.5,
+      };
+      sounds.playWheelOff();
+    } else if (r < 0.9) {
+      s.malfunction = {
+        kind: 'backfire',
+        timer: 1.5,
+        label: '💥 BACKFIRE!',
+        labelTimer: 2,
+      };
+      sounds.playMalfunction();
+    } else {
+      s.malfunction = {
+        kind: 'bouncy',
+        timer: 3,
+        label: '🔧 SUSPENSION GLITCH!',
+        labelTimer: 2,
+      };
+      sounds.playMalfunction();
+    }
   }
 
   private updateSmoke(particles: SmokeParticle[], dt: number) {

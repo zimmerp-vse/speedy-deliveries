@@ -48,6 +48,14 @@ export interface GameState {
   crashSkipped: boolean;
   braking: boolean;
   collidedSprite?: { type: string; emoji: string; screenX?: number };
+  // Mechanical malfunction (random comedic failure during driving)
+  malfunction?: {
+    kind: 'smoke' | 'wheel' | 'backfire' | 'bouncy';
+    timer: number;        // seconds remaining
+    missingWheel?: 0 | 1 | 2 | 3; // index of detached wheel for 'wheel'
+    label: string;        // funny label shown briefly
+    labelTimer: number;   // seconds remaining for the label overlay
+  };
 }
 
 export interface RoadSegment {
@@ -551,6 +559,33 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
   // Tire smoke
   drawSmokeParticles(ctx, state.tireSmoke);
 
+  // Malfunction label overlay
+  if (state.malfunction && state.malfunction.labelTimer > 0) {
+    const alpha = Math.min(1, state.malfunction.labelTimer / 0.4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = 'bold 22px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const text = state.malfunction.label;
+    const tw = ctx.measureText(text).width + 32;
+    const tx = W / 2;
+    const ty = H * 0.32;
+    ctx.fillStyle = 'rgba(20,8,8,0.85)';
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    (ctx as CanvasRenderingContext2D & { roundRect: (x: number, y: number, w: number, h: number, r: number) => void })
+      .roundRect(tx - tw / 2, ty - 22, tw, 44, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ffd97a';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 6;
+    ctx.fillText(text, tx, ty);
+    ctx.restore();
+  }
+
   // Crash scene overlay (flash, text, collided object — no smoke here)
   if (state.isAccident && state.crashTimer > 0 && !state.crashSkipped) {
     drawCrashScene(ctx, state, W, H);
@@ -963,7 +998,11 @@ function shadeColor(hex: string, percent: number): string {
 
 function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
   const baseCx = W / 2 + state.steering * 40;
-  const cy = H - 10;
+  // Bouncy suspension malfunction — vertical hop
+  const bounce = state.malfunction?.kind === 'bouncy'
+    ? Math.sin(state.gameTime * 14) * 8
+    : 0;
+  const cy = H - 10 + bounce;
   const cw = 140, ch = 78;
 
   // Ground shadow (drawn flat, before rotation)
@@ -1119,10 +1158,49 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
       ctx.stroke();
     }
   };
-  drawWheel(cx - cw / 2 - 3, cy - ch * 0.42);
-  drawWheel(cx - cw / 2 - 3, cy - 18);
-  drawWheel(cx + cw / 2 - 11, cy - ch * 0.42);
-  drawWheel(cx + cw / 2 - 11, cy - 18);
+  // Wheel positions: 0=front-left, 1=rear-left, 2=front-right, 3=rear-right
+  const wheelPositions: Array<[number, number]> = [
+    [cx - cw / 2 - 3, cy - ch * 0.42],
+    [cx - cw / 2 - 3, cy - 18],
+    [cx + cw / 2 - 11, cy - ch * 0.42],
+    [cx + cw / 2 - 11, cy - 18],
+  ];
+  const missingWheel = state.malfunction?.kind === 'wheel' ? state.malfunction.missingWheel : -1;
+  wheelPositions.forEach(([wx, wy], i) => {
+    if (i === missingWheel) {
+      // Draw sparks where the wheel used to be
+      ctx.fillStyle = '#ffcc33';
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + state.gameTime * 20;
+        const r = 6 + Math.sin(state.gameTime * 30 + k) * 3;
+        ctx.beginPath();
+        ctx.arc(wx + wheelW / 2 + Math.cos(a) * r, wy + wheelH / 2 + Math.sin(a) * r, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Bare axle stub
+      ctx.fillStyle = '#444';
+      ctx.fillRect(wx + 3, wy + wheelH / 2 - 2, wheelW - 6, 4);
+      return;
+    }
+    drawWheel(wx, wy);
+  });
+
+  // Backfire flame from exhaust
+  if (state.malfunction?.kind === 'backfire') {
+    const flameAlpha = 0.6 + Math.random() * 0.4;
+    const flameLen = 14 + Math.random() * 10;
+    ctx.save();
+    ctx.globalAlpha = flameAlpha;
+    const fg = ctx.createRadialGradient(cx, cy + 4, 2, cx, cy + 4 + flameLen, flameLen);
+    fg.addColorStop(0, '#fff4a0');
+    fg.addColorStop(0.4, '#ff9020');
+    fg.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 4 + flameLen * 0.5, 12, flameLen, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // ===== TAIL LIGHTS / BRAKE LIGHTS =====
   const braking = state.braking || state.speed < 5;
