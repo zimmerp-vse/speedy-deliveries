@@ -384,10 +384,24 @@ export class GameEngine {
         }
       }
 
+      // Once we've coasted to a stop, end the round like a crash
+      if (s.speed <= 0.5) {
+        s.isAccident = true;
+        s.crashTimer = 0;
+        s.speed = 0;
+        s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.endRound(false, 'obstacle');
+        return;
+      }
+
       if (s.malfunction.timer <= 0) {
-        s.malfunction = undefined;
-        // Schedule next attempt 10-25s later
-        this.nextMalfunctionAt = s.gameTime + 10 + Math.random() * 15;
+        // Timer ran out before fully stopping — still treat as breakdown
+        s.isAccident = true;
+        s.crashTimer = 0;
+        s.speed = 0;
+        s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.endRound(false, 'obstacle');
+        return;
       }
       return;
     }
