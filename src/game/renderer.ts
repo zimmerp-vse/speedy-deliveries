@@ -118,6 +118,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   const drawDist = Math.min(GAME_CONFIG.drawDistance, (state as any).__drawDistOverride ?? GAME_CONFIG.drawDistance);
   const baseIdx = Math.floor(position) % N;
   const horizon = H * 0.4;
+  // Width-based scale: shrinks sprites/scenery on narrow (mobile) viewports
+  const wScale = Math.max(0.55, Math.min(1, W / 900));
+  (state as any).__wScale = wScale;
 
   // Sky gradient
   const skyG = ctx.createLinearGradient(0, 0, 0, horizon);
@@ -430,13 +433,16 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
       const rightEmojis = sceneAny.rightScenery || scene.scenery || [];
 
       // Multiple placement columns on each side — all same size at same depth
+      // On narrow (mobile) viewports, push placements further from the road so houses
+      // don't appear to sit ON the road, and scale fonts down.
+      const offRoadBoost = wScale < 0.85 ? 1.35 : 1;
       const placements = [
-        { mult: 1.9,  freq: 3, seed: 7 },    // roadside (kept off the road)
-        { mult: 2.6,  freq: 3, seed: 11 },   // near
-        { mult: 3.6,  freq: 3, seed: 17 },   // mid
-        { mult: 5.0,  freq: 6, seed: 23 },   // far
-        { mult: 7.0,  freq: 6, seed: 31 },   // very far
-        { mult: 10.0, freq: 9, seed: 37 },   // screen edge
+        { mult: 1.9 * offRoadBoost,  freq: 3, seed: 7 },    // roadside (kept off the road)
+        { mult: 2.6 * offRoadBoost,  freq: 3, seed: 11 },   // near
+        { mult: 3.6 * offRoadBoost,  freq: 3, seed: 17 },   // mid
+        { mult: 5.0 * offRoadBoost,  freq: 6, seed: 23 },   // far
+        { mult: 7.0 * offRoadBoost,  freq: 6, seed: 31 },   // very far
+        { mult: 10.0 * offRoadBoost, freq: 9, seed: 37 },   // screen edge
       ];
 
       for (const p of placements) {
@@ -451,7 +457,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 3) % leftEmojis.length;
             const emoji = leftEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
+            const fontSize = Math.max(6, Math.min(180 * wScale, 70 * baseScale * sizeHint * wScale));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -467,7 +473,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const eidx = Math.abs(cur.idx * p.seed + 11) % rightEmojis.length;
             const emoji = rightEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
-            const fontSize = Math.max(6, Math.min(180, 70 * baseScale * sizeHint));
+            const fontSize = Math.max(6, Math.min(180 * wScale, 70 * baseScale * sizeHint * wScale));
             ctx.font = `${fontSize}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
@@ -513,14 +519,14 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     // Sprites
     if (seg.sprite?.active) {
       const distN = i;
-      // NPC vehicles tuned ~15% smaller so they read correctly relative to the player car
-      const rawScale = Math.max(0.22, Math.min(2.2, 5.0 / (distN + 0.8)));
+      // NPC vehicles tuned ~15% smaller so they read correctly relative to the player car.
+      // Also scale by viewport width so they don't dominate the screen on mobile.
+      const rawScale = Math.max(0.22, Math.min(2.2, 5.0 / (distN + 0.8))) * wScale;
       const spriteScale = seg.sprite.type === 'car' ? rawScale * 0.85 : rawScale;
       const spriteX = prev.screenX + prev.screenW * seg.sprite.offset;
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
-        // Subtle bobbing animation per-vehicle for life-like feel
         const seed = (cur.idx * 13) % 1000;
         const bob = Math.sin(state.gameTime * 6 + seed) * 1.2 * spriteScale;
         const sway = Math.sin(state.gameTime * 3 + seed * 0.3) * 0.6 * spriteScale;
@@ -531,10 +537,9 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         }
         drawObstacleCar(ctx, animX, animY, spriteScale, seg.sprite.emoji);
       } else {
-        // Cap pedestrians/road obstacles much tighter to avoid the "giant head" pop at very close range
         const isPed = seg.sprite.type === 'pedestrian';
         const cappedScale = Math.min(spriteScale, isPed ? 1.1 : 1.4);
-        const fSize = Math.max(16, Math.min(isPed ? 64 : 80, 60 * cappedScale));
+        const fSize = Math.max(14, Math.min(isPed ? 64 : 80, 60 * cappedScale));
         ctx.font = `${fSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -1003,7 +1008,8 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
     ? Math.sin(state.gameTime * 14) * 8
     : 0;
   const cy = H - 10 + bounce;
-  const cw = 140, ch = 78;
+  const wScale: number = (state as any).__wScale ?? 1;
+  const cw = 140 * wScale, ch = 78 * wScale;
 
   // Ground shadow (drawn flat, before rotation)
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
