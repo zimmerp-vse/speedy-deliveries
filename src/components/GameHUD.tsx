@@ -86,7 +86,8 @@ export function GameHUD({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const rolexSize = isMobile ? 92 : 200;
+  const rolexSize = isMobile ? 72 : 200;
+  const tachoSize = isMobile ? 110 : 190;
 
   return (
     <>
