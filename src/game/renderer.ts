@@ -118,6 +118,9 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
   const drawDist = Math.min(GAME_CONFIG.drawDistance, (state as any).__drawDistOverride ?? GAME_CONFIG.drawDistance);
   const baseIdx = Math.floor(position) % N;
   const horizon = H * 0.4;
+  // Width-based scale: shrinks sprites/scenery on narrow (mobile) viewports
+  const wScale = Math.max(0.55, Math.min(1, W / 900));
+  (state as any).__wScale = wScale;
 
   // Sky gradient
   const skyG = ctx.createLinearGradient(0, 0, 0, horizon);
