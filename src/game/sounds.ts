@@ -165,15 +165,16 @@ class SoundManager {
   setEngineSpeed(speed: number) {
     if (!this.ctx || !this.engineSrc || !this.engineGain || !this.engineFilter) return;
     const t = this.ctx.currentTime;
-    // Playback rate 0.55 (idle) → 3.2 (redline). Non-linear so it sounds aggressive at top.
-    const rate = 0.55 + Math.pow(speed, 0.85) * 2.6;
+    // Playback rate 0.45 (idle) → 1.9 (redline). Much lower top end so it
+    // sounds like an engine, not a UFO.
+    const rate = 0.45 + Math.pow(speed, 0.9) * 1.45;
     this.engineSrc.playbackRate.setTargetAtTime(rate, t, 0.07);
 
-    // Filter opens with revs — adds bite
-    this.engineFilter.frequency.setTargetAtTime(500 + speed * 5500, t, 0.08);
-    this.engineFilter.Q.setTargetAtTime(1.5 + speed * 4, t, 0.1);
+    // Filter opens with revs — adds bite, but capped lower
+    this.engineFilter.frequency.setTargetAtTime(420 + speed * 2800, t, 0.08);
+    this.engineFilter.Q.setTargetAtTime(1.2 + speed * 2.5, t, 0.1);
 
-    const targetGain = speed < 0.02 ? 0.04 : 0.18 + speed * 0.25;
+    const targetGain = speed < 0.02 ? 0.04 : 0.18 + speed * 0.22;
     this.engineGain.gain.setTargetAtTime(targetGain, t, 0.08);
 
     if (this.rumbleGain && this.rumbleFilter) {
