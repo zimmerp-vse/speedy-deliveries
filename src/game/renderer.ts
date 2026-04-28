@@ -1008,7 +1008,8 @@ function drawCar(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: 
     ? Math.sin(state.gameTime * 14) * 8
     : 0;
   const cy = H - 10 + bounce;
-  const cw = 140, ch = 78;
+  const wScale: number = (state as any).__wScale ?? 1;
+  const cw = 140 * wScale, ch = 78 * wScale;
 
   // Ground shadow (drawn flat, before rotation)
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
