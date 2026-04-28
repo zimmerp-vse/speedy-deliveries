@@ -32,8 +32,8 @@ export class GameEngine {
   private running: boolean = false;
   private cruiseEnabled: boolean = false;
   private lastSpawnSegment: number = 0;
-  private pendingCelebrationResult: RoundResult | null = null;
-  private pendingCrashResult: RoundResult | null = null;
+  private pendingCelebrationResult: RichRoundResult | null = null;
+  private pendingCrashResult: RichRoundResult | null = null;
   private crashTimeout: ReturnType<typeof setTimeout> | null = null;
   private accumulator: number = 0;
   private readonly fixedStep: number = 1 / 60;
