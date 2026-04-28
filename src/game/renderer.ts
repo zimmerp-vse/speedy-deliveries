@@ -519,14 +519,14 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
     // Sprites
     if (seg.sprite?.active) {
       const distN = i;
-      // NPC vehicles tuned ~15% smaller so they read correctly relative to the player car
-      const rawScale = Math.max(0.22, Math.min(2.2, 5.0 / (distN + 0.8)));
+      // NPC vehicles tuned ~15% smaller so they read correctly relative to the player car.
+      // Also scale by viewport width so they don't dominate the screen on mobile.
+      const rawScale = Math.max(0.22, Math.min(2.2, 5.0 / (distN + 0.8))) * wScale;
       const spriteScale = seg.sprite.type === 'car' ? rawScale * 0.85 : rawScale;
       const spriteX = prev.screenX + prev.screenW * seg.sprite.offset;
       const spriteY = Math.min(H - 20, prev.screenY);
 
       if (seg.sprite.type === 'car') {
-        // Subtle bobbing animation per-vehicle for life-like feel
         const seed = (cur.idx * 13) % 1000;
         const bob = Math.sin(state.gameTime * 6 + seed) * 1.2 * spriteScale;
         const sway = Math.sin(state.gameTime * 3 + seed * 0.3) * 0.6 * spriteScale;
@@ -537,10 +537,9 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         }
         drawObstacleCar(ctx, animX, animY, spriteScale, seg.sprite.emoji);
       } else {
-        // Cap pedestrians/road obstacles much tighter to avoid the "giant head" pop at very close range
         const isPed = seg.sprite.type === 'pedestrian';
         const cappedScale = Math.min(spriteScale, isPed ? 1.1 : 1.4);
-        const fSize = Math.max(16, Math.min(isPed ? 64 : 80, 60 * cappedScale));
+        const fSize = Math.max(14, Math.min(isPed ? 64 : 80, 60 * cappedScale));
         ctx.font = `${fSize}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
