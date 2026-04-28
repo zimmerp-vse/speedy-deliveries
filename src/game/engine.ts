@@ -2,6 +2,18 @@ import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
 import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
 import { sounds } from './sounds';
 
+export type RoundOutcomeKind =
+  | 'delivered'
+  | 'crash_car'
+  | 'crash_obstacle'
+  | 'crash_pedestrian'
+  | 'malfunction'
+  | 'timeout';
+
+export interface RichRoundResult extends RoundResult {
+  outcome: RoundOutcomeKind;
+}
+
 export interface Controls {
   left: boolean;
   right: boolean;
