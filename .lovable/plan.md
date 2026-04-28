@@ -1,43 +1,142 @@
+## Goal
 
+Make this game embeddable as an iframe minigame inside a master React platform. The master sends player identity, difficulty, and economy parameters in; the minigame streams round-by-round results back and a final summary when finished or quit.
 
-## Fix variable game speed across devices
+Yes — iframe + `window.postMessage` is the standard, framework-agnostic approach. It avoids cross-bundle React conflicts, isolates state/audio, and works regardless of what stack the master uses.
 
-The game currently runs in slow-motion on weaker desktops and too fast on some mobiles. Root cause: the simulation advances by `dt` per `requestAnimationFrame` tick, but `dt` is **capped at 50ms**. When the renderer takes longer than that per frame (which happens on slower machines because the renderer redraws hundreds of gradients, emoji, and scenery layers every frame), simulated time falls behind real time — so a 20-second trip can feel like a minute. On very small mobile canvases the renderer is cheap and the loop runs at the device refresh rate (often 90/120 Hz) without any throttling.
+## Protocol overview
 
-The fix has two parts: make the simulation run on a **fixed real-time accumulator** (independent of render FPS), and **cut render cost** so most devices comfortably hit 60 FPS.
+```text
+master (parent)                    minigame (iframe)
+      |                                     |
+      |  ───── INIT (config) ─────────────▶ |
+      |                                     | (validates, applies overrides,
+      |                                     |  shows Start screen w/ player name)
+      |  ◀───── READY ─────────────────────|
+      |                                     |
+      |                                     | (player plays round 1)
+      |  ◀───── ROUND_END (result) ────────|
+      |                                     |
+      |                                     | ... (rounds 2..N)
+      |                                     |
+      |  ◀───── GAME_END (summary) ────────|
+      |                                     |
+      |  ───── QUIT ──────────────────────▶ | (optional, master forces exit)
+      |  ◀───── GAME_END (summary) ────────|
+```
 
-### 1. Fixed-timestep simulation loop (`src/game/engine.ts`)
+All messages are JSON `{ type, version: 1, payload }`. Origin is validated on both sides.
 
-Replace the current "one update per RAF, dt capped at 50ms" loop with a fixed-step accumulator:
+### Messages from master → minigame
 
-- Simulation step: `1/60 s` (16.67 ms).
-- Each RAF frame: compute real elapsed time, add to accumulator, run as many fixed `update(1/60)` steps as fit, then render once.
-- Hard cap accumulator at 250 ms so a tab-switch doesn't trigger a huge catch-up.
-- Result: 1 second of wall-clock = 1 second of game, regardless of whether the device renders at 30, 60, 90, or 144 FPS.
+- `INIT` — sent once after iframe loads. Payload:
+  - `player`: `{ nickname: string, id?: string, avatarUrl?: string }`
+  - `difficulty`: all optional, override `GAME_CONFIG`:
+    - `totalRounds` (int)
+    - `tripDurationMs` (int) — max time per delivery
+    - `carSpawnRate` (0..1)
+    - `obstacleSpawnRate` (0..1)
+    - `pedestrianSpawnRate` (0..1)
+    - `malfunctionProbability` (0..1) — current hardcoded 0.25
+    - `malfunctionFirstWindowSec` `{ min, max }` — current 8..22s
+    - `maxSpeed`, `acceleration`, `braking` (advanced tuning)
+  - `economy`: all optional
+    - `startingMoney`
+    - `deliveryReward`
+    - `carCollisionCost`
+    - `obstacleCollisionCost`
+    - `pedestrianCollisionCost`
+    - `malfunctionCost` (new — currently reuses obstacleCost)
+  - `ui`: `{ showHud?: boolean, showQuitButton?: boolean, locale?: string }`
+  - `session`: `{ sessionId: string }` — echoed back in every outbound event
+  - `extra`: `Record<string, unknown>` — **forward-compat slot**, ignored today, echoed in `GAME_END`
+- `QUIT` — master asks game to end now. Game emits `GAME_END` with what's been played.
+- `PAUSE` / `RESUME` — optional, pause loop and audio.
 
-### 2. Render performance (`src/game/renderer.ts` + `DrivingGame.tsx`)
+### Messages from minigame → master
 
-- Cap `devicePixelRatio` used for the canvas backing store at **1.5** (currently the canvas matches CSS pixels but renders many gradients; on retina mobiles the implicit upscaling and on desktops a too-large canvas both hurt). Set `canvas.width = clientWidth * dpr` once on resize, then `ctx.scale(dpr, dpr)` so game code keeps using CSS pixels.
-- Reduce `GAME_CONFIG.drawDistance` from 150 to ~90 segments — beyond that, segments project to <1 px anyway.
-- Skip the canvas-clear+resize check inside the render hot path (only resize on the `resize` event, not every frame).
-- Pre-render the static car sprites (sedan, sports, taxi, police, truck, hummer, garbage, van) once into offscreen canvases keyed by approximate width, and `drawImage` them scaled — instead of rebuilding 5–10 gradients per car per frame.
-- Throttle scenery: draw the far horizon scenery layer every 2nd frame, midground every frame.
-- Skip tire/crash smoke updates when there are zero particles (tiny win, but the loop currently iterates anyway).
+- `READY` — sent after iframe mounts and is listening. Master should wait for this before sending `INIT` (or master can send `INIT` immediately and minigame buffers it).
+- `INIT_ACK` — `{ appliedConfig }` so the master can verify which overrides took effect.
+- `ROUND_START` — `{ round, scene, deliveryType, startedAt }`
+- `ROUND_END` — per round, mirrors current `RoundResult` plus richer outcome:
+  - `round` (1..N)
+  - `outcome`: `'delivered' | 'crash_car' | 'crash_obstacle' | 'crash_pedestrian' | 'malfunction' | 'timeout'`
+  - `timeMs` (round duration)
+  - `moneyEarned`, `moneyLost`, `moneyBalance`
+  - `scene`
+- `GAME_END` — sent when all rounds done OR on `QUIT`:
+  - `sessionId`, `player`, `endedReason: 'completed' | 'quit'`
+  - `rounds: RoundEvent[]` (full history)
+  - `totals`: `{ deliveries, accidents: { car, obstacle, pedestrian, malfunction, timeout }, money }`
+  - `extra` (echoed from INIT)
+- `ERROR` — `{ code, message }` for invalid INIT payloads.
 
-### 3. Lightweight FPS / perf guard (optional, same change)
+Outcome distinction: today the engine collapses malfunction → `accidentType: 'obstacle'` with emoji `🔧`, and timeout → `accidentType: undefined`. The protocol will report these as distinct `outcome` values so the master can score them separately.
 
-Add a tiny rolling FPS sampler in the engine; if average frame time stays above 28 ms for >2 s, automatically drop `drawDistance` to 60 and disable scenery jitter for the rest of the session. This protects the long tail of slow Chromebooks/old laptops without affecting good devices.
+## Implementation
 
-### Files to change
+### New files
 
-- `src/game/engine.ts` — fixed-timestep accumulator loop, FPS sampler.
-- `src/game/renderer.ts` — cached car sprites, cheaper scenery, cleaner clears.
-- `src/game/config.ts` — lower `drawDistance` default (150 → 90).
-- `src/components/DrivingGame.tsx` — DPR-aware canvas resize (cap at 1.5).
+- `src/integration/protocol.ts` — TypeScript types for every message, version constant, type guards.
+- `src/integration/host.ts` — small class used by `DrivingGame`:
+  - validates `event.origin` against an allow-list (configurable; default `*` with warning in dev)
+  - buffers an early `INIT` arriving before React mount
+  - exposes `onInit`, `sendReady`, `sendRoundStart`, `sendRoundEnd`, `sendGameEnd`, `sendError`
+  - listens for `QUIT` / `PAUSE` / `RESUME`
+- `src/integration/applyConfig.ts` — merges `INIT.difficulty` + `INIT.economy` over `GAME_CONFIG` and returns a per-session config object. We will also refactor the engine to read from an injected config rather than the imported `GAME_CONFIG` singleton (small change: pass `config` into `GameEngine` constructor; default = `GAME_CONFIG`).
+- `public/embed-example.html` — minimal standalone host page demonstrating the protocol (useful for QA without building the master).
+- `docs/EMBEDDING.md` — short integration guide for the master platform team, including a copy-pastable React `<MinigameFrame />` component.
 
-### How to verify after the change
+### Edits
 
-- Throttle Chrome DevTools CPU to 6× and confirm a round still completes in ~45 s of wall-clock time (not 3 minutes).
-- Open on a 120 Hz phone and confirm the car no longer flies through trips in a few seconds.
-- Watch the FPS overlay (if added) — should sit at the device refresh rate on modern hardware and degrade gracefully on slow ones without changing game speed.
+- `src/game/config.ts`
+  - Add `malfunctionProbability`, `malfunctionFirstWindowMinSec`, `malfunctionFirstWindowMaxSec`, `malfunctionCost` so they're tunable.
+  - Export a `GameConfig` type and a `mergeConfig(base, overrides)` helper.
+- `src/game/engine.ts`
+  - Constructor takes optional `config: GameConfig`; replace `GAME_CONFIG` references inside engine with `this.config`.
+  - In `endRound`, accept a richer `outcome` string and pass it through to callbacks so the host bridge can forward it.
+  - Distinguish malfunction vs obstacle vs timeout when calling `endRound` (already separated internally — just expose).
+  - Add `quit()` method that forces `GAME_END` with current data.
+  - Optional `pause()` / `resume()` that freeze the RAF loop and mute sounds.
+- `src/components/DrivingGame.tsx`
+  - On mount, instantiate `host` and `sendReady()`.
+  - On `INIT`: build engine with merged config, set player nickname, send `INIT_ACK`.
+  - Wire `onRoundEnd` → `host.sendRoundEnd`, `onGameEnd` → `host.sendGameEnd`.
+  - Handle `QUIT` → `engine.quit()`.
+- `src/components/StartScreen.tsx`
+  - Show `player.nickname` if provided ("Welcome, {nickname}").
+  - Optional "Quit" button when embedded (`ui.showQuitButton`).
+- `src/components/GameOverScreen.tsx`
+  - When embedded, replace "DATA READY FOR MASTER PLATFORM" with a "Return" button that posts `GAME_END` again and the master closes the iframe.
 
+### Security & robustness
+
+- Validate `event.origin` against a configurable allow-list (env var `VITE_EMBED_ALLOWED_ORIGINS`, comma-separated; `*` allowed only in dev).
+- Validate INIT payload with a small zod-like manual validator (no new deps); send `ERROR` on bad shape.
+- Version field on every message; reject mismatched major versions with `ERROR`.
+- Always echo `sessionId` and `extra` so the master can correlate.
+- `extra: Record<string, unknown>` is the forward-compat slot you asked for — anything the master adds today is preserved in `GAME_END` without code changes here.
+
+### Master-side usage (sketch, lives in `docs/EMBEDDING.md`)
+
+```tsx
+<iframe ref={ref} src={MINIGAME_URL} onLoad={() => {
+  ref.current!.contentWindow!.postMessage({
+    type: 'INIT', version: 1, payload: {
+      session: { sessionId: crypto.randomUUID() },
+      player: { nickname: 'Alice' },
+      difficulty: { totalRounds: 5, carSpawnRate: 0.05, malfunctionProbability: 0.4 },
+      economy: { deliveryReward: 750, carCollisionCost: 400 },
+      extra: { questId: 'abc-123' },
+    }
+  }, MINIGAME_ORIGIN);
+}} />
+```
+
+Master listens with `window.addEventListener('message', ...)`, filters by origin, switches on `type`, persists `ROUND_END`s, finalizes on `GAME_END`.
+
+## Out of scope (can add later)
+
+- Cryptographic signing of results (needs a backend).
+- Leaderboards / persistence — master's responsibility.
+- Resizing protocol (iframe currently fills its container).
