@@ -62,19 +62,19 @@ class SoundManager {
     const data = buf.getChannelData(0);
 
     // Fundamental "firing" frequency at 1.0 playback rate.
-    const fundamental = 80; // Hz — gives meaty low-end at idle
+    const fundamental = 55; // Hz — deeper, throatier idle (V8-ish)
     const samplesPerCycle = sr / fundamental;
 
     for (let i = 0; i < length; i++) {
       const cyclePos = (i % samplesPerCycle) / samplesPerCycle; // 0..1
       // Sharp asymmetric pulse — like a piston firing.
       // Strong attack, decay tail.
-      const env = Math.exp(-cyclePos * 6) * (1 - cyclePos * 0.3);
-      // Mix of saw + square + noise = aggressive growl
+      const env = Math.exp(-cyclePos * 5) * (1 - cyclePos * 0.4);
+      // Heavier saw + less noise = warmer, less "alien"
       const saw = (cyclePos * 2 - 1);
       const sqr = cyclePos < 0.5 ? 1 : -1;
-      const noise = (Math.random() * 2 - 1) * 0.3;
-      data[i] = env * (saw * 0.55 + sqr * 0.3 + noise * 0.4);
+      const noise = (Math.random() * 2 - 1) * 0.18;
+      data[i] = env * (saw * 0.7 + sqr * 0.2 + noise * 0.25);
     }
     // Gentle DC removal & normalise
     let max = 0;
@@ -103,13 +103,13 @@ class SoundManager {
     const src = ctx.createBufferSource();
     src.buffer = this.engineBuffer;
     src.loop = true;
-    src.playbackRate.value = 0.6; // idle
+    src.playbackRate.value = 0.45; // idle — lower & beefier
 
     // Lowpass to keep the body warm — opens up at high RPM
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 700;
-    filter.Q.value = 1.5;
+    filter.frequency.value = 500;
+    filter.Q.value = 1.2;
 
     // Soft clip for that aggressive turbo edge
     const dist = ctx.createWaveShaper();
@@ -165,15 +165,16 @@ class SoundManager {
   setEngineSpeed(speed: number) {
     if (!this.ctx || !this.engineSrc || !this.engineGain || !this.engineFilter) return;
     const t = this.ctx.currentTime;
-    // Playback rate 0.55 (idle) → 3.2 (redline). Non-linear so it sounds aggressive at top.
-    const rate = 0.55 + Math.pow(speed, 0.85) * 2.6;
+    // Playback rate 0.45 (idle) → 1.9 (redline). Much lower top end so it
+    // sounds like an engine, not a UFO.
+    const rate = 0.45 + Math.pow(speed, 0.9) * 1.45;
     this.engineSrc.playbackRate.setTargetAtTime(rate, t, 0.07);
 
-    // Filter opens with revs — adds bite
-    this.engineFilter.frequency.setTargetAtTime(500 + speed * 5500, t, 0.08);
-    this.engineFilter.Q.setTargetAtTime(1.5 + speed * 4, t, 0.1);
+    // Filter opens with revs — adds bite, but capped lower
+    this.engineFilter.frequency.setTargetAtTime(420 + speed * 2800, t, 0.08);
+    this.engineFilter.Q.setTargetAtTime(1.2 + speed * 2.5, t, 0.1);
 
-    const targetGain = speed < 0.02 ? 0.04 : 0.18 + speed * 0.25;
+    const targetGain = speed < 0.02 ? 0.04 : 0.18 + speed * 0.22;
     this.engineGain.gain.setTargetAtTime(targetGain, t, 0.08);
 
     if (this.rumbleGain && this.rumbleFilter) {
@@ -317,110 +318,113 @@ class SoundManager {
     boom.connect(bDist); bDist.connect(bg); bg.connect(this.master);
     boom.start(t); boom.stop(t + 0.85);
 
-    // Metallic crunch
+    // Metallic crunch — short, punchy, gone before it sounds like sweeping
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoiseBuffer();
-    const nF = ctx.createBiquadFilter(); nF.type = 'bandpass'; nF.frequency.value = 1600; nF.Q.value = 0.8;
+    const nF = ctx.createBiquadFilter(); nF.type = 'bandpass'; nF.frequency.value = 1600; nF.Q.value = 1.2;
     const nG = ctx.createGain();
-    nG.gain.setValueAtTime(0.5, t);
-    nG.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    nG.gain.setValueAtTime(0.45, t);
+    nG.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
     noise.connect(nF); nF.connect(nG); nG.connect(this.master);
-    noise.start(t); noise.stop(t + 0.6);
+    noise.start(t); noise.stop(t + 0.3);
 
-    // Glass shatter
-    const noise2 = ctx.createBufferSource();
-    noise2.buffer = this.getNoiseBuffer();
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
-    const n2g = ctx.createGain();
-    n2g.gain.setValueAtTime(0.3, t + 0.05);
-    n2g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-    noise2.connect(hp); hp.connect(n2g); n2g.connect(this.master);
-    noise2.start(t + 0.05); noise2.stop(t + 0.5);
+    // Quick glass tinkle — short bursts, not a sustained hiss
+    for (let i = 0; i < 4; i++) {
+      const ti = t + 0.06 + i * 0.05 + Math.random() * 0.03;
+      const tink = ctx.createOscillator();
+      tink.type = 'triangle';
+      tink.frequency.setValueAtTime(3500 + Math.random() * 2500, ti);
+      tink.frequency.exponentialRampToValueAtTime(1800, ti + 0.12);
+      const tg = ctx.createGain();
+      tg.gain.setValueAtTime(0.12, ti);
+      tg.gain.exponentialRampToValueAtTime(0.001, ti + 0.14);
+      tink.connect(tg); tg.connect(this.master);
+      tink.start(ti); tink.stop(ti + 0.16);
+    }
 
-    // Angry shout — starts after the bang
-    this.playAngryShout(t + 0.5);
+    // Angry female scream — starts after the bang
+    this.playAngryShout(t + 0.55);
   }
 
   /**
-   * Angry shouting — uses noisy glottal pulses + harsh formants + consonant noise.
-   * No musical pitches — random rough vocal bursts that sound frustrated.
+   * Angry female scream — one long sustained "AAAAAH!" then a couple of
+   * shorter angry yells. Uses high-pitched sawtooth + vowel formants +
+   * pitch wobble (vibrato) so it reads as a real screaming voice rather
+   * than melodic singing or a brushy hiss.
    */
   private playAngryShout(startTime: number) {
     if (!this.ctx || !this.master) return;
     const ctx = this.ctx;
-    const syllables = 3 + Math.floor(Math.random() * 3);
-    let t = startTime;
 
-    for (let i = 0; i < syllables; i++) {
-      const dur = 0.18 + Math.random() * 0.22;
-      // Pitch range like an angry female speaking — non-musical, jumps around
-      const startPitch = 240 + Math.random() * 180;
-      const endPitch = startPitch * (0.6 + Math.random() * 0.7); // can fall OR rise
-
-      // Glottal-ish source: pulse-width-modulated saw with noise mixed in
+    const screamSyllable = (t: number, dur: number, basePitch: number, vowel: [number, number]) => {
+      // Voiced source — sawtooth at female scream range (~600-900 Hz)
       const carrier = ctx.createOscillator();
       carrier.type = 'sawtooth';
-      carrier.frequency.setValueAtTime(startPitch, t);
-      // Sharp pitch contour — natural shout, not melodic
-      carrier.frequency.exponentialRampToValueAtTime(Math.max(80, endPitch), t + dur);
+      carrier.frequency.setValueAtTime(basePitch, t);
+      // Natural pitch arc: rises sharply, holds, falls at end — like a real scream
+      carrier.frequency.linearRampToValueAtTime(basePitch * 1.25, t + 0.08);
+      carrier.frequency.linearRampToValueAtTime(basePitch * 1.15, t + dur * 0.7);
+      carrier.frequency.exponentialRampToValueAtTime(Math.max(120, basePitch * 0.55), t + dur);
 
-      // Add breath/grit noise to the voice
-      const breath = ctx.createBufferSource();
-      breath.buffer = this.getNoiseBuffer();
-      const breathF = ctx.createBiquadFilter();
-      breathF.type = 'highpass'; breathF.frequency.value = 1200;
-      const breathG = ctx.createGain();
-      breathG.gain.setValueAtTime(0, t);
-      breathG.gain.linearRampToValueAtTime(0.18, t + 0.02);
-      breathG.gain.linearRampToValueAtTime(0, t + dur);
+      // Vibrato — adds the "wobble" of an emotional scream
+      const vib = ctx.createOscillator(); vib.type = 'sine'; vib.frequency.value = 6.5;
+      const vibAmt = ctx.createGain(); vibAmt.gain.value = basePitch * 0.04;
+      vib.connect(vibAmt); vibAmt.connect(carrier.frequency);
 
-      // Two formant filters for vowel quality — randomised per syllable
-      // (like "AH", "EH", "UH" — frustrated open vowels)
-      const vowels = [
-        [780, 1100],  // AH
-        [550, 1700],  // EH
-        [640, 1190],  // AW
-        [490, 1350],  // UH
-      ];
-      const v = vowels[Math.floor(Math.random() * vowels.length)];
+      // Vowel formants (open "AH" / "EH")
       const f1 = ctx.createBiquadFilter();
-      f1.type = 'bandpass'; f1.frequency.value = v[0]; f1.Q.value = 6;
+      f1.type = 'bandpass'; f1.frequency.value = vowel[0]; f1.Q.value = 5;
       const f2 = ctx.createBiquadFilter();
-      f2.type = 'bandpass'; f2.frequency.value = v[1]; f2.Q.value = 7;
+      f2.type = 'bandpass'; f2.frequency.value = vowel[1]; f2.Q.value = 6;
 
-      // Distortion = vocal strain
+      // Vocal strain distortion
       const strain = ctx.createWaveShaper();
-      strain.curve = this.buildDistortionCurve(15) as any;
+      strain.curve = this.buildDistortionCurve(20) as any;
+
+      // Breath/rasp layer — gives the scream grit (not brushy sweep!)
+      const rasp = ctx.createBufferSource();
+      rasp.buffer = this.getNoiseBuffer();
+      const raspF = ctx.createBiquadFilter();
+      raspF.type = 'bandpass'; raspF.frequency.value = vowel[1]; raspF.Q.value = 3;
 
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, t);
-      env.gain.linearRampToValueAtTime(0.42, t + 0.025);
-      env.gain.linearRampToValueAtTime(0.36, t + dur - 0.06);
+      env.gain.linearRampToValueAtTime(0.5, t + 0.04);
+      env.gain.linearRampToValueAtTime(0.45, t + dur - 0.08);
       env.gain.linearRampToValueAtTime(0, t + dur);
 
-      // Wire: carrier → formants → strain → env, breath → env (parallel)
+      const raspGain = ctx.createGain();
+      raspGain.gain.setValueAtTime(0, t);
+      raspGain.gain.linearRampToValueAtTime(0.08, t + 0.05);
+      raspGain.gain.linearRampToValueAtTime(0, t + dur);
+
       carrier.connect(f1); f1.connect(f2); f2.connect(strain); strain.connect(env);
-      breath.connect(breathF); breathF.connect(env);
-      env.connect(this.master);
+      rasp.connect(raspF); raspF.connect(raspGain);
+      env.connect(this.master!);
+      raspGain.connect(this.master!);
 
-      carrier.start(t); breath.start(t);
-      carrier.stop(t + dur + 0.02); breath.stop(t + dur + 0.02);
+      carrier.start(t); vib.start(t); rasp.start(t);
+      carrier.stop(t + dur + 0.02);
+      vib.stop(t + dur + 0.02);
+      rasp.stop(t + dur + 0.02);
+    };
 
-      // Optional consonant burst at start of syllable (T/K/P sound)
-      if (Math.random() < 0.5) {
-        const cons = ctx.createBufferSource();
-        cons.buffer = this.getNoiseBuffer();
-        const cf = ctx.createBiquadFilter();
-        cf.type = 'highpass'; cf.frequency.value = 3000;
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.25, t);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-        cons.connect(cf); cf.connect(cg); cg.connect(this.master);
-        cons.start(t); cons.stop(t + 0.05);
-      }
+    const vowels: [number, number][] = [
+      [800, 1150],  // AH
+      [600, 1700],  // EH
+      [700, 1200],  // AW
+    ];
 
-      // Variable gap — natural speech rhythm, not metronomic
-      t += dur + 0.05 + Math.random() * 0.12;
+    // 1) Long sustained scream
+    screamSyllable(startTime, 0.95, 720 + Math.random() * 80, vowels[0]);
+
+    // 2) Two angry yells after a breath
+    let t = startTime + 1.05;
+    for (let i = 0; i < 2; i++) {
+      const dur = 0.28 + Math.random() * 0.18;
+      const pitch = 520 + Math.random() * 220;
+      screamSyllable(t, dur, pitch, vowels[Math.floor(Math.random() * vowels.length)]);
+      t += dur + 0.12 + Math.random() * 0.1;
     }
   }
 
