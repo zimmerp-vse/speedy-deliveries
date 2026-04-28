@@ -2,6 +2,18 @@ import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
 import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
 import { sounds } from './sounds';
 
+export type RoundOutcomeKind =
+  | 'delivered'
+  | 'crash_car'
+  | 'crash_obstacle'
+  | 'crash_pedestrian'
+  | 'malfunction'
+  | 'timeout';
+
+export interface RichRoundResult extends RoundResult {
+  outcome: RoundOutcomeKind;
+}
+
 export interface Controls {
   left: boolean;
   right: boolean;
@@ -20,8 +32,8 @@ export class GameEngine {
   private running: boolean = false;
   private cruiseEnabled: boolean = false;
   private lastSpawnSegment: number = 0;
-  private pendingCelebrationResult: RoundResult | null = null;
-  private pendingCrashResult: RoundResult | null = null;
+  private pendingCelebrationResult: RichRoundResult | null = null;
+  private pendingCrashResult: RichRoundResult | null = null;
   private crashTimeout: ReturnType<typeof setTimeout> | null = null;
   private accumulator: number = 0;
   private readonly fixedStep: number = 1 / 60;
@@ -36,12 +48,16 @@ export class GameEngine {
   private gameData: GameData;
   private roundStartTime: number = 0;
   
-  public onRoundEnd?: (result: RoundResult, gameData: GameData) => void;
+  public onRoundEnd?: (result: RichRoundResult, gameData: GameData) => void;
   public onGameEnd?: (gameData: GameData) => void;
   public onSpeedUpdate?: (speed: number) => void;
   public onMoneyUpdate?: (money: number) => void;
   public onTimeUpdate?: (time: number) => void;
   public onCelebrationChange?: (active: boolean) => void;
+  public onRoundStart?: (info: { round: number; scene: string; deliveryType: string }) => void;
+
+  // Tracks the in-flight outcome so endRound can map it for the host bridge.
+  private pendingOutcome: RoundOutcomeKind | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -112,8 +128,16 @@ export class GameEngine {
     this.accumulator = 0;
     this.fpsSamples = [];
     this.lastTickSecond = -1;
-    // First malfunction can happen 8-22s into the round
-    this.nextMalfunctionAt = 8 + Math.random() * 14;
+    // First malfunction window — configurable via INIT
+    const minW = (GAME_CONFIG as any).malfunctionFirstWindowMinSec ?? 8;
+    const maxW = (GAME_CONFIG as any).malfunctionFirstWindowMaxSec ?? 22;
+    this.nextMalfunctionAt = minW + Math.random() * Math.max(0, maxW - minW);
+    this.pendingOutcome = null;
+    this.onRoundStart?.({
+      round: this.currentRound,
+      scene: this.state.scene.name,
+      deliveryType: this.state.deliveryType.label,
+    });
     sounds.ensureContext();
     sounds.startEngine();
     this.loop();
@@ -122,6 +146,19 @@ export class GameEngine {
   stop() {
     this.running = false;
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
+  }
+
+  /** Force end the entire game NOW, emitting onGameEnd with whatever's been recorded. */
+  quit() {
+    this.running = false;
+    if (this.animFrame) cancelAnimationFrame(this.animFrame);
+    if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
+    sounds.setHorn(false); this.lastHornState = false;
+    sounds.setScreech(false); this.lastScreechState = false;
+    sounds.stopEngine();
+    this.pendingCelebrationResult = null;
+    this.pendingCrashResult = null;
+    this.onGameEnd?.({ ...this.gameData });
   }
 
   setControls(controls: Partial<Controls>) {
@@ -287,6 +324,7 @@ export class GameEngine {
     if (s.timeRemaining <= 0 && !s.isDelivery && !s.isAccident) {
       s.isAccident = true;
       s.speed = 0;
+      this.pendingOutcome = 'timeout';
       this.endRound(false, undefined);
       return;
     }
@@ -390,6 +428,7 @@ export class GameEngine {
         s.crashTimer = 0;
         s.speed = 0;
         s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.pendingOutcome = 'malfunction';
         this.endRound(false, 'obstacle');
         return;
       }
@@ -400,6 +439,7 @@ export class GameEngine {
         s.crashTimer = 0;
         s.speed = 0;
         s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.pendingOutcome = 'malfunction';
         this.endRound(false, 'obstacle');
         return;
       }
@@ -409,8 +449,9 @@ export class GameEngine {
     // Don't roll new malfunctions until threshold and only when actually driving
     if (s.gameTime < this.nextMalfunctionAt || s.speed < 25) return;
 
-    // Roll for a malfunction (~25% chance once threshold hits, retry every ~2s otherwise)
-    if (Math.random() > 0.25) {
+    // Roll for a malfunction. Probability is configurable via INIT (default 0.25).
+    const malfProb = (GAME_CONFIG as any).malfunctionProbability ?? 0.25;
+    if (Math.random() > malfProb) {
       this.nextMalfunctionAt = s.gameTime + 2;
       return;
     }
@@ -571,9 +612,19 @@ export class GameEngine {
     
     this.gameData.totalMoney += moneyEarned - moneyLost;
     
-    const result: RoundResult = {
+    let outcome: RoundOutcomeKind;
+    if (success) outcome = 'delivered';
+    else if (this.pendingOutcome) outcome = this.pendingOutcome;
+    else if (accidentType === 'car') outcome = 'crash_car';
+    else if (accidentType === 'obstacle') outcome = 'crash_obstacle';
+    else if (accidentType === 'pedestrian') outcome = 'crash_pedestrian';
+    else outcome = 'timeout';
+    this.pendingOutcome = null;
+
+    const result: RichRoundResult = {
       round: this.currentRound, success, accidentType,
       moneyEarned, moneyLost, scene: this.state.scene.name, timeMs,
+      outcome,
     };
     this.gameData.rounds.push(result);
 
