@@ -128,8 +128,16 @@ export class GameEngine {
     this.accumulator = 0;
     this.fpsSamples = [];
     this.lastTickSecond = -1;
-    // First malfunction can happen 8-22s into the round
-    this.nextMalfunctionAt = 8 + Math.random() * 14;
+    // First malfunction window — configurable via INIT
+    const minW = (GAME_CONFIG as any).malfunctionFirstWindowMinSec ?? 8;
+    const maxW = (GAME_CONFIG as any).malfunctionFirstWindowMaxSec ?? 22;
+    this.nextMalfunctionAt = minW + Math.random() * Math.max(0, maxW - minW);
+    this.pendingOutcome = null;
+    this.onRoundStart?.({
+      round: this.currentRound,
+      scene: this.state.scene.name,
+      deliveryType: this.state.deliveryType.label,
+    });
     sounds.ensureContext();
     sounds.startEngine();
     this.loop();
