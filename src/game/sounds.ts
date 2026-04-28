@@ -62,19 +62,19 @@ class SoundManager {
     const data = buf.getChannelData(0);
 
     // Fundamental "firing" frequency at 1.0 playback rate.
-    const fundamental = 80; // Hz — gives meaty low-end at idle
+    const fundamental = 55; // Hz — deeper, throatier idle (V8-ish)
     const samplesPerCycle = sr / fundamental;
 
     for (let i = 0; i < length; i++) {
       const cyclePos = (i % samplesPerCycle) / samplesPerCycle; // 0..1
       // Sharp asymmetric pulse — like a piston firing.
       // Strong attack, decay tail.
-      const env = Math.exp(-cyclePos * 6) * (1 - cyclePos * 0.3);
-      // Mix of saw + square + noise = aggressive growl
+      const env = Math.exp(-cyclePos * 5) * (1 - cyclePos * 0.4);
+      // Heavier saw + less noise = warmer, less "alien"
       const saw = (cyclePos * 2 - 1);
       const sqr = cyclePos < 0.5 ? 1 : -1;
-      const noise = (Math.random() * 2 - 1) * 0.3;
-      data[i] = env * (saw * 0.55 + sqr * 0.3 + noise * 0.4);
+      const noise = (Math.random() * 2 - 1) * 0.18;
+      data[i] = env * (saw * 0.7 + sqr * 0.2 + noise * 0.25);
     }
     // Gentle DC removal & normalise
     let max = 0;
