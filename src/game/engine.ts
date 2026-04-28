@@ -311,6 +311,7 @@ export class GameEngine {
     if (s.timeRemaining <= 0 && !s.isDelivery && !s.isAccident) {
       s.isAccident = true;
       s.speed = 0;
+      this.pendingOutcome = 'timeout';
       this.endRound(false, undefined);
       return;
     }
