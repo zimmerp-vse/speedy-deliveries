@@ -318,28 +318,32 @@ class SoundManager {
     boom.connect(bDist); bDist.connect(bg); bg.connect(this.master);
     boom.start(t); boom.stop(t + 0.85);
 
-    // Metallic crunch
+    // Metallic crunch — short, punchy, gone before it sounds like sweeping
     const noise = ctx.createBufferSource();
     noise.buffer = this.getNoiseBuffer();
-    const nF = ctx.createBiquadFilter(); nF.type = 'bandpass'; nF.frequency.value = 1600; nF.Q.value = 0.8;
+    const nF = ctx.createBiquadFilter(); nF.type = 'bandpass'; nF.frequency.value = 1600; nF.Q.value = 1.2;
     const nG = ctx.createGain();
-    nG.gain.setValueAtTime(0.5, t);
-    nG.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    nG.gain.setValueAtTime(0.45, t);
+    nG.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
     noise.connect(nF); nF.connect(nG); nG.connect(this.master);
-    noise.start(t); noise.stop(t + 0.6);
+    noise.start(t); noise.stop(t + 0.3);
 
-    // Glass shatter
-    const noise2 = ctx.createBufferSource();
-    noise2.buffer = this.getNoiseBuffer();
-    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5000;
-    const n2g = ctx.createGain();
-    n2g.gain.setValueAtTime(0.3, t + 0.05);
-    n2g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-    noise2.connect(hp); hp.connect(n2g); n2g.connect(this.master);
-    noise2.start(t + 0.05); noise2.stop(t + 0.5);
+    // Quick glass tinkle — short bursts, not a sustained hiss
+    for (let i = 0; i < 4; i++) {
+      const ti = t + 0.06 + i * 0.05 + Math.random() * 0.03;
+      const tink = ctx.createOscillator();
+      tink.type = 'triangle';
+      tink.frequency.setValueAtTime(3500 + Math.random() * 2500, ti);
+      tink.frequency.exponentialRampToValueAtTime(1800, ti + 0.12);
+      const tg = ctx.createGain();
+      tg.gain.setValueAtTime(0.12, ti);
+      tg.gain.exponentialRampToValueAtTime(0.001, ti + 0.14);
+      tink.connect(tg); tg.connect(this.master);
+      tink.start(ti); tink.stop(ti + 0.16);
+    }
 
-    // Angry shout — starts after the bang
-    this.playAngryShout(t + 0.5);
+    // Angry female scream — starts after the bang
+    this.playAngryShout(t + 0.55);
   }
 
   /**
