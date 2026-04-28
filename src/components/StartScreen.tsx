@@ -15,10 +15,14 @@ export function StartScreen({ onStart, nickname }: StartScreenProps) {
         <h2 className="font-display text-xl font-bold mb-1 text-primary">
           DELIVERY
         </h2>
-        <p className="font-arcade text-[10px] text-muted-foreground mb-8 leading-relaxed">
+        <p className="font-arcade text-[10px] text-muted-foreground mb-2 leading-relaxed">
           Deliver packages • Avoid crashes • Earn cash
         </p>
-        
+        {nickname && (
+          <p className="font-arcade text-[11px] text-accent mb-6">
+            WELCOME, {nickname.toUpperCase()}
+          </p>
+        )}
         <button
           onClick={onStart}
           className="font-arcade text-sm gradient-sunset text-primary-foreground px-10 py-4 rounded-xl hover:opacity-90 transition-all active:scale-95 animate-pulse-glow"
