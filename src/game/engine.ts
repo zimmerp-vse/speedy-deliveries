@@ -436,8 +436,9 @@ export class GameEngine {
     // Don't roll new malfunctions until threshold and only when actually driving
     if (s.gameTime < this.nextMalfunctionAt || s.speed < 25) return;
 
-    // Roll for a malfunction (~25% chance once threshold hits, retry every ~2s otherwise)
-    if (Math.random() > 0.25) {
+    // Roll for a malfunction. Probability is configurable via INIT (default 0.25).
+    const malfProb = (GAME_CONFIG as any).malfunctionProbability ?? 0.25;
+    if (Math.random() > malfProb) {
       this.nextMalfunctionAt = s.gameTime + 2;
       return;
     }
