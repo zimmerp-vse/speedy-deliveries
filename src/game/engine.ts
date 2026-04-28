@@ -148,6 +148,19 @@ export class GameEngine {
     if (this.animFrame) cancelAnimationFrame(this.animFrame);
   }
 
+  /** Force end the entire game NOW, emitting onGameEnd with whatever's been recorded. */
+  quit() {
+    this.running = false;
+    if (this.animFrame) cancelAnimationFrame(this.animFrame);
+    if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
+    sounds.setHorn(false); this.lastHornState = false;
+    sounds.setScreech(false); this.lastScreechState = false;
+    sounds.stopEngine();
+    this.pendingCelebrationResult = null;
+    this.pendingCrashResult = null;
+    this.onGameEnd?.({ ...this.gameData });
+  }
+
   setControls(controls: Partial<Controls>) {
     Object.assign(this.controls, controls);
   }
