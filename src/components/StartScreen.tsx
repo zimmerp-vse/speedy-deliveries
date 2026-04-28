@@ -1,8 +1,9 @@
 interface StartScreenProps {
   onStart: () => void;
+  nickname?: string;
 }
 
-export function StartScreen({ onStart }: StartScreenProps) {
+export function StartScreen({ onStart, nickname }: StartScreenProps) {
   return (
     <div className="absolute inset-0 flex items-center justify-center z-20 bg-background/95 backdrop-blur-lg">
       <div className="text-center max-w-sm mx-4">
