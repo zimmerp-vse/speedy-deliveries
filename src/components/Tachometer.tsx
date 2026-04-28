@@ -1,14 +1,14 @@
 interface TachometerProps {
   speed: number;
   maxSpeed?: number;
+  size?: number;
 }
 
 // Ferrari-style yellow speedometer (km/h). Needle sweeps from 0 to maxSpeed.
-export function Tachometer({ speed, maxSpeed = 220 }: TachometerProps) {
-  const size = 190;
+export function Tachometer({ speed, maxSpeed = 220, size = 190 }: TachometerProps) {
   const cx = size / 2;
   const cy = size / 2;
-  const r = 80;
+  const r = size * 0.42;
 
   // Sweep from -135deg (left) to +135deg (right) = 270deg total
   const startAngle = -135;
