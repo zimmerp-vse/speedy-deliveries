@@ -599,9 +599,19 @@ export class GameEngine {
     
     this.gameData.totalMoney += moneyEarned - moneyLost;
     
-    const result: RoundResult = {
+    let outcome: RoundOutcomeKind;
+    if (success) outcome = 'delivered';
+    else if (this.pendingOutcome) outcome = this.pendingOutcome;
+    else if (accidentType === 'car') outcome = 'crash_car';
+    else if (accidentType === 'obstacle') outcome = 'crash_obstacle';
+    else if (accidentType === 'pedestrian') outcome = 'crash_pedestrian';
+    else outcome = 'timeout';
+    this.pendingOutcome = null;
+
+    const result: RichRoundResult = {
       round: this.currentRound, success, accidentType,
       moneyEarned, moneyLost, scene: this.state.scene.name, timeMs,
+      outcome,
     };
     this.gameData.rounds.push(result);
 
