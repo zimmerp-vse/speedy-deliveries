@@ -95,7 +95,7 @@ export function GameHUD({
       <div className="absolute top-3 sm:top-6 left-0 right-0 px-3 sm:px-4 flex justify-between items-start pointer-events-none z-10 gap-2">
         {/* Ferrari tachometer */}
         <div className="flex-shrink-0">
-          <Tachometer speed={speed} maxSpeed={200} />
+          <Tachometer speed={speed} maxSpeed={200} size={tachoSize} />
         </div>
 
         {/* Center cluster: ROUND + CASH luxury plaques */}
