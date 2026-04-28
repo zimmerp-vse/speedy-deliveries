@@ -103,13 +103,13 @@ class SoundManager {
     const src = ctx.createBufferSource();
     src.buffer = this.engineBuffer;
     src.loop = true;
-    src.playbackRate.value = 0.6; // idle
+    src.playbackRate.value = 0.45; // idle — lower & beefier
 
     // Lowpass to keep the body warm — opens up at high RPM
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = 700;
-    filter.Q.value = 1.5;
+    filter.frequency.value = 500;
+    filter.Q.value = 1.2;
 
     // Soft clip for that aggressive turbo edge
     const dist = ctx.createWaveShaper();
