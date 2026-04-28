@@ -48,12 +48,16 @@ export class GameEngine {
   private gameData: GameData;
   private roundStartTime: number = 0;
   
-  public onRoundEnd?: (result: RoundResult, gameData: GameData) => void;
+  public onRoundEnd?: (result: RichRoundResult, gameData: GameData) => void;
   public onGameEnd?: (gameData: GameData) => void;
   public onSpeedUpdate?: (speed: number) => void;
   public onMoneyUpdate?: (money: number) => void;
   public onTimeUpdate?: (time: number) => void;
   public onCelebrationChange?: (active: boolean) => void;
+  public onRoundStart?: (info: { round: number; scene: string; deliveryType: string }) => void;
+
+  // Tracks the in-flight outcome so endRound can map it for the host bridge.
+  private pendingOutcome: RoundOutcomeKind | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
