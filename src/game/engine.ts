@@ -415,6 +415,7 @@ export class GameEngine {
         s.crashTimer = 0;
         s.speed = 0;
         s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.pendingOutcome = 'malfunction';
         this.endRound(false, 'obstacle');
         return;
       }
@@ -425,6 +426,7 @@ export class GameEngine {
         s.crashTimer = 0;
         s.speed = 0;
         s.collidedSprite = { type: 'obstacle', emoji: '🔧' };
+        this.pendingOutcome = 'malfunction';
         this.endRound(false, 'obstacle');
         return;
       }
