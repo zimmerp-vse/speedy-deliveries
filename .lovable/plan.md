@@ -1,142 +1,90 @@
-## Goal
 
-Make this game embeddable as an iframe minigame inside a master React platform. The master sends player identity, difficulty, and economy parameters in; the minigame streams round-by-round results back and a final summary when finished or quit.
+# Master Testing Platform for Dash Delivery
 
-Yes — iframe + `window.postMessage` is the standard, framework-agnostic approach. It avoids cross-bundle React conflicts, isolates state/audio, and works regardless of what stack the master uses.
+Build a master platform on top of this project that registers volunteer users, lets them pick a testing regime (T1/T2/T3), embeds the game in an iframe, and stores the full structured dataset for admin export.
 
-## Protocol overview
+## Routes & flow
 
-```text
-master (parent)                    minigame (iframe)
-      |                                     |
-      |  ───── INIT (config) ─────────────▶ |
-      |                                     | (validates, applies overrides,
-      |                                     |  shows Start screen w/ player name)
-      |  ◀───── READY ─────────────────────|
-      |                                     |
-      |                                     | (player plays round 1)
-      |  ◀───── ROUND_END (result) ────────|
-      |                                     |
-      |                                     | ... (rounds 2..N)
-      |                                     |
-      |  ◀───── GAME_END (summary) ────────|
-      |                                     |
-      |  ───── QUIT ──────────────────────▶ | (optional, master forces exit)
-      |  ◀───── GAME_END (summary) ────────|
-```
+- `/` — Landing page. If logged in: redirect to `/play`. If not: links to `/login` and `/register`.
+- `/register` — Email + password + nickname + age + date of birth (age stored as integer, validated 6–120).
+- `/login` — Email + password sign-in.
+- `/play` — Authenticated regime picker. Three cards: T1 (Easy/Medium/Hard buttons), T2 (form with all difficulty/economy params), T3 (single "Generate & play" button — params randomized in admin-defined ranges, shown for transparency before launch).
+- `/session/:id` — Embeds the existing game (`/game`) in an iframe, sends INIT with chosen params, captures all `ROUND_END` / `GAME_END` events, persists them. Shows a summary screen at the end.
+- `/admin` — Admin-only (whitelist: nickname `zimmerp`). Tabs: **Presets** (edit T1 easy/medium/hard), **T3 Ranges** (min/max for each random param), **Sessions** (table of all sessions, filters, "Export CSV" button), **Users** (read-only list).
 
-All messages are JSON `{ type, version: 1, payload }`. Origin is validated on both sides.
+The current game stays at `/game` — it's the iframe source. The existing `DrivingGame` component is unchanged; only the host page wraps it.
 
-### Messages from master → minigame
+## Database (Lovable Cloud)
 
-- `INIT` — sent once after iframe loads. Payload:
-  - `player`: `{ nickname: string, id?: string, avatarUrl?: string }`
-  - `difficulty`: all optional, override `GAME_CONFIG`:
-    - `totalRounds` (int)
-    - `tripDurationMs` (int) — max time per delivery
-    - `carSpawnRate` (0..1)
-    - `obstacleSpawnRate` (0..1)
-    - `pedestrianSpawnRate` (0..1)
-    - `malfunctionProbability` (0..1) — current hardcoded 0.25
-    - `malfunctionFirstWindowSec` `{ min, max }` — current 8..22s
-    - `maxSpeed`, `acceleration`, `braking` (advanced tuning)
-  - `economy`: all optional
-    - `startingMoney`
-    - `deliveryReward`
-    - `carCollisionCost`
-    - `obstacleCollisionCost`
-    - `pedestrianCollisionCost`
-    - `malfunctionCost` (new — currently reuses obstacleCost)
-  - `ui`: `{ showHud?: boolean, showQuitButton?: boolean, locale?: string }`
-  - `session`: `{ sessionId: string }` — echoed back in every outbound event
-  - `extra`: `Record<string, unknown>` — **forward-compat slot**, ignored today, echoed in `GAME_END`
-- `QUIT` — master asks game to end now. Game emits `GAME_END` with what's been played.
-- `PAUSE` / `RESUME` — optional, pause loop and audio.
+- `profiles` — `id` (FK auth.users), `nickname` (unique), `age`, `date_of_birth`, `created_at`. Auto-created via trigger on signup.
+- `user_roles` — `id`, `user_id`, `role` (enum `admin`|`user`). Separate table per security rules. `has_role()` SECURITY DEFINER function for RLS.
+- `difficulty_presets` — `id`, `regime` (`T1_easy`|`T1_medium`|`T1_hard`), `params` (jsonb of full InitPayload difficulty+economy), `updated_at`, `updated_by`. Seeded with sensible defaults.
+- `t3_ranges` — single-row config: `params_min` jsonb, `params_max` jsonb. Admin edits.
+- `game_sessions` — `id`, `user_id`, `nickname` (denormalized for export), `regime` (T1_easy/medium/hard, T2, T3), `params` jsonb (the resolved InitPayload sent to game), `started_at`, `ended_at`, `ended_reason` (completed/quit/abandoned), `totals` jsonb (deliveries, money, accidents).
+- `round_events` — `id`, `session_id`, `round_number`, `outcome` (delivered/crash_car/crash_obstacle/crash_pedestrian/malfunction/timeout), `time_ms`, `scene`, `money_earned`, `money_lost`, `money_balance`, `created_at`.
 
-### Messages from minigame → master
+RLS: users read/write only their own sessions and rounds; admins read all. Presets/ranges readable by all authenticated, writable by admins only.
 
-- `READY` — sent after iframe mounts and is listening. Master should wait for this before sending `INIT` (or master can send `INIT` immediately and minigame buffers it).
-- `INIT_ACK` — `{ appliedConfig }` so the master can verify which overrides took effect.
-- `ROUND_START` — `{ round, scene, deliveryType, startedAt }`
-- `ROUND_END` — per round, mirrors current `RoundResult` plus richer outcome:
-  - `round` (1..N)
-  - `outcome`: `'delivered' | 'crash_car' | 'crash_obstacle' | 'crash_pedestrian' | 'malfunction' | 'timeout'`
-  - `timeMs` (round duration)
-  - `moneyEarned`, `moneyLost`, `moneyBalance`
-  - `scene`
-- `GAME_END` — sent when all rounds done OR on `QUIT`:
-  - `sessionId`, `player`, `endedReason: 'completed' | 'quit'`
-  - `rounds: RoundEvent[]` (full history)
-  - `totals`: `{ deliveries, accidents: { car, obstacle, pedestrian, malfunction, timeout }, money }`
-  - `extra` (echoed from INIT)
-- `ERROR` — `{ code, message }` for invalid INIT payloads.
+## Admin whitelist
 
-Outcome distinction: today the engine collapses malfunction → `accidentType: 'obstacle'` with emoji `🔧`, and timeout → `accidentType: undefined`. The protocol will report these as distinct `outcome` values so the master can score them separately.
+On signup, a DB trigger checks if `NEW.raw_user_meta_data->>'nickname' = 'zimmerp'` and inserts an `admin` role; otherwise inserts `user`. (Can later be managed via admin UI.)
 
-## Implementation
+## CSV export
 
-### New files
+Admin clicks "Export CSV". One row per round (joined session + round). Columns:
+`session_id, user_id, nickname, age, regime, started_at, ended_at, ended_reason, total_rounds, trip_duration_ms, car_spawn_rate, obstacle_spawn_rate, pedestrian_spawn_rate, malfunction_probability, max_speed, acceleration, braking, delivery_reward, car_collision_cost, obstacle_collision_cost, pedestrian_collision_cost, malfunction_cost, round_number, outcome, time_ms, scene, money_earned, money_lost, money_balance`
 
-- `src/integration/protocol.ts` — TypeScript types for every message, version constant, type guards.
-- `src/integration/host.ts` — small class used by `DrivingGame`:
-  - validates `event.origin` against an allow-list (configurable; default `*` with warning in dev)
-  - buffers an early `INIT` arriving before React mount
-  - exposes `onInit`, `sendReady`, `sendRoundStart`, `sendRoundEnd`, `sendGameEnd`, `sendError`
-  - listens for `QUIT` / `PAUSE` / `RESUME`
-- `src/integration/applyConfig.ts` — merges `INIT.difficulty` + `INIT.economy` over `GAME_CONFIG` and returns a per-session config object. We will also refactor the engine to read from an injected config rather than the imported `GAME_CONFIG` singleton (small change: pass `config` into `GameEngine` constructor; default = `GAME_CONFIG`).
-- `public/embed-example.html` — minimal standalone host page demonstrating the protocol (useful for QA without building the master).
-- `docs/EMBEDDING.md` — short integration guide for the master platform team, including a copy-pastable React `<MinigameFrame />` component.
+Generated client-side from a single Supabase query (no edge function needed).
 
-### Edits
+## Game integration
 
-- `src/game/config.ts`
-  - Add `malfunctionProbability`, `malfunctionFirstWindowMinSec`, `malfunctionFirstWindowMaxSec`, `malfunctionCost` so they're tunable.
-  - Export a `GameConfig` type and a `mergeConfig(base, overrides)` helper.
-- `src/game/engine.ts`
-  - Constructor takes optional `config: GameConfig`; replace `GAME_CONFIG` references inside engine with `this.config`.
-  - In `endRound`, accept a richer `outcome` string and pass it through to callbacks so the host bridge can forward it.
-  - Distinguish malfunction vs obstacle vs timeout when calling `endRound` (already separated internally — just expose).
-  - Add `quit()` method that forces `GAME_END` with current data.
-  - Optional `pause()` / `resume()` that freeze the RAF loop and mute sounds.
-- `src/components/DrivingGame.tsx`
-  - On mount, instantiate `host` and `sendReady()`.
-  - On `INIT`: build engine with merged config, set player nickname, send `INIT_ACK`.
-  - Wire `onRoundEnd` → `host.sendRoundEnd`, `onGameEnd` → `host.sendGameEnd`.
-  - Handle `QUIT` → `engine.quit()`.
-- `src/components/StartScreen.tsx`
-  - Show `player.nickname` if provided ("Welcome, {nickname}").
-  - Optional "Quit" button when embedded (`ui.showQuitButton`).
-- `src/components/GameOverScreen.tsx`
-  - When embedded, replace "DATA READY FOR MASTER PLATFORM" with a "Return" button that posts `GAME_END` again and the master closes the iframe.
+The existing `postMessage` protocol (v1) already supports everything we need. The session host page:
+1. Renders `<iframe src="/game">`.
+2. On `READY` → posts `INIT` with the resolved params + `session: { sessionId }` + `player: { nickname }` + `ui: { showQuitButton: true }`.
+3. On `ROUND_END` → inserts a `round_events` row.
+4. On `GAME_END` → updates the `game_sessions` row with `ended_reason`, `ended_at`, `totals`.
+5. "Abandoned" sessions (user closes tab) stay with `ended_reason = null` — admin can filter them out.
 
-### Security & robustness
+## T1 default presets (seeded)
 
-- Validate `event.origin` against a configurable allow-list (env var `VITE_EMBED_ALLOWED_ORIGINS`, comma-separated; `*` allowed only in dev).
-- Validate INIT payload with a small zod-like manual validator (no new deps); send `ERROR` on bad shape.
-- Version field on every message; reject mismatched major versions with `ERROR`.
-- Always echo `sessionId` and `extra` so the master can correlate.
-- `extra: Record<string, unknown>` is the forward-compat slot you asked for — anything the master adds today is preserved in `GAME_END` without code changes here.
+| Param | Easy | Medium | Hard |
+|---|---|---|---|
+| totalRounds | 5 | 8 | 10 |
+| tripDurationMs | 45000 | 35000 | 25000 |
+| carSpawnRate | 0.02 | 0.04 | 0.07 |
+| obstacleSpawnRate | 0.003 | 0.006 | 0.012 |
+| pedestrianSpawnRate | 0.002 | 0.004 | 0.008 |
+| malfunctionProbability | 0.1 | 0.25 | 0.45 |
+| deliveryReward | 600 | 500 | 400 |
+| carCollisionCost | 200 | 300 | 500 |
 
-### Master-side usage (sketch, lives in `docs/EMBEDDING.md`)
+Admin can change any of these later.
 
-```tsx
-<iframe ref={ref} src={MINIGAME_URL} onLoad={() => {
-  ref.current!.contentWindow!.postMessage({
-    type: 'INIT', version: 1, payload: {
-      session: { sessionId: crypto.randomUUID() },
-      player: { nickname: 'Alice' },
-      difficulty: { totalRounds: 5, carSpawnRate: 0.05, malfunctionProbability: 0.4 },
-      economy: { deliveryReward: 750, carCollisionCost: 400 },
-      extra: { questId: 'abc-123' },
-    }
-  }, MINIGAME_ORIGIN);
-}} />
-```
+## T3 default ranges
 
-Master listens with `window.addEventListener('message', ...)`, filters by origin, switches on `type`, persists `ROUND_END`s, finalizes on `GAME_END`.
+Each numeric difficulty/economy field gets `[min, max]`; on T3 launch we pick a uniform random value per field. Defaults sit just outside the easy/hard bracket so randomized games span the meaningful difficulty space.
 
-## Out of scope (can add later)
+## Files to create
 
-- Cryptographic signing of results (needs a backend).
-- Leaderboards / persistence — master's responsibility.
-- Resizing protocol (iframe currently fills its container).
+- `src/pages/Landing.tsx`, `Login.tsx`, `Register.tsx`, `Play.tsx`, `SessionHost.tsx`, `Admin.tsx`
+- `src/pages/Game.tsx` — moves current `Index.tsx` game-rendering logic here at route `/game`
+- `src/components/regime/T1Card.tsx`, `T2Form.tsx`, `T3Card.tsx`
+- `src/components/admin/PresetsEditor.tsx`, `T3RangesEditor.tsx`, `SessionsTable.tsx`, `UsersTable.tsx`
+- `src/lib/auth.ts` — `useAuth` hook (session + onAuthStateChange), `useIsAdmin` hook
+- `src/lib/csv.ts` — flatten + download helper
+- `src/lib/regimes.ts` — preset/range fetchers, T3 randomizer
+- Supabase migration: enums, tables, RLS, signup trigger, seed data
+
+## Files to modify
+
+- `src/App.tsx` — add all new routes, auth-guarded wrapper
+- `src/pages/Index.tsx` — becomes the landing redirect (or replaced by `Landing.tsx`)
+
+## Out of scope (this iteration)
+
+- Email verification flow (will disable "Confirm email" in auth settings for faster volunteer onboarding; user can re-enable later)
+- Promoting other users to admin via UI (only zimmerp via signup trigger; manual DB edits possible)
+- Resuming abandoned sessions
+- Per-user dashboards (volunteers just play; admin sees all)
+
+After approval I'll implement everything in one pass and seed the T1 presets and T3 ranges.
