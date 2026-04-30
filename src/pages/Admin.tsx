@@ -31,7 +31,7 @@ export default function Admin() {
 
   const savePreset = async (regime: PresetKey) => {
     const { error } = await supabase.from('difficulty_presets').update({
-      params: unflattenParams(presets[regime]),
+      params: unflattenParams(presets[regime]) as any,
       updated_at: new Date().toISOString(),
       updated_by: user?.id,
     }).eq('regime', regime);

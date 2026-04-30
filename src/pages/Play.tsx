@@ -29,9 +29,9 @@ export default function Play() {
 
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
     if (!user || !profile) return;
-    const { data, error } = await supabase.from('game_sessions').insert({
-      user_id: user.id, nickname: profile.nickname, regime, params,
-    }).select('id').single();
+    const { data, error } = await supabase.from('game_sessions').insert([{
+      user_id: user.id, nickname: profile.nickname, regime, params: params as any,
+    }]).select('id').single();
     if (error) { toast.error(error.message); return; }
     nav(`/session/${data.id}`);
   };

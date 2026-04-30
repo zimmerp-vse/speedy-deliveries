@@ -11,19 +11,22 @@ export interface ResolvedParams {
 export async function loadPreset(regime: 'T1_easy' | 'T1_medium' | 'T1_hard'): Promise<ResolvedParams> {
   const { data, error } = await supabase.from('difficulty_presets').select('params').eq('regime', regime).single();
   if (error) throw error;
-  return data.params as ResolvedParams;
+  return data.params as unknown as ResolvedParams;
 }
 
-export async function loadAllPresets() {
+export async function loadAllPresets(): Promise<{ regime: string; params: ResolvedParams }[]> {
   const { data, error } = await supabase.from('difficulty_presets').select('regime, params');
   if (error) throw error;
-  return data;
+  return (data ?? []).map(r => ({ regime: r.regime, params: r.params as unknown as ResolvedParams }));
 }
 
-export async function loadT3Ranges() {
+export async function loadT3Ranges(): Promise<{ params_min: Record<string, number>; params_max: Record<string, number> }> {
   const { data, error } = await supabase.from('t3_ranges').select('params_min, params_max').eq('id', 1).single();
   if (error) throw error;
-  return data;
+  return {
+    params_min: data.params_min as unknown as Record<string, number>,
+    params_max: data.params_max as unknown as Record<string, number>,
+  };
 }
 
 const NUMERIC_FIELDS = [
