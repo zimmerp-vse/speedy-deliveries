@@ -14,16 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      difficulty_presets: {
+        Row: {
+          params: Json
+          regime: Database["public"]["Enums"]["preset_regime"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          params: Json
+          regime: Database["public"]["Enums"]["preset_regime"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          params?: Json
+          regime?: Database["public"]["Enums"]["preset_regime"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      game_sessions: {
+        Row: {
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          nickname: string
+          params: Json
+          regime: string
+          started_at: string
+          totals: Json | null
+          user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          nickname: string
+          params: Json
+          regime: string
+          started_at?: string
+          totals?: Json | null
+          user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          nickname?: string
+          params?: Json
+          regime?: string
+          started_at?: string
+          totals?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number
+          created_at: string
+          date_of_birth: string | null
+          id: string
+          nickname: string
+        }
+        Insert: {
+          age: number
+          created_at?: string
+          date_of_birth?: string | null
+          id: string
+          nickname: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          date_of_birth?: string | null
+          id?: string
+          nickname?: string
+        }
+        Relationships: []
+      }
+      round_events: {
+        Row: {
+          created_at: string
+          id: string
+          money_balance: number
+          money_earned: number
+          money_lost: number
+          outcome: string
+          round_number: number
+          scene: string | null
+          session_id: string
+          time_ms: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          money_balance?: number
+          money_earned?: number
+          money_lost?: number
+          outcome: string
+          round_number: number
+          scene?: string | null
+          session_id: string
+          time_ms: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          money_balance?: number
+          money_earned?: number
+          money_lost?: number
+          outcome?: string
+          round_number?: number
+          scene?: string | null
+          session_id?: string
+          time_ms?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      t3_ranges: {
+        Row: {
+          id: number
+          params_max: Json
+          params_min: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          params_max: Json
+          params_min: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          params_max?: Json
+          params_min?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      preset_regime: "T1_easy" | "T1_medium" | "T1_hard"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +329,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      preset_regime: ["T1_easy", "T1_medium", "T1_hard"],
+    },
   },
 } as const
