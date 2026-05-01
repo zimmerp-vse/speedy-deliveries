@@ -8,7 +8,7 @@ import { useAuth, useProfile } from '@/lib/auth';
 import { AppHeader } from '@/components/AppHeader';
 import {
   loadAllPresets, loadT3Ranges, generateT3, flattenParams, unflattenParams,
-  NUMERIC_FIELD_LIST, FIELD_LABELS, type ResolvedParams, type RegimeKey,
+  NUMERIC_FIELD_LIST, FIELD_LABELS, FALLBACK_PRESETS, FALLBACK_T3_RANGES, isTransientDatabaseError, type ResolvedParams, type RegimeKey,
 } from '@/lib/regimes';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ export default function Play() {
   const [presets, setPresets] = useState<Record<string, ResolvedParams>>({});
   const [ranges, setRanges] = useState<{ params_min: any; params_max: any } | null>(null);
   const [t2Params, setT2Params] = useState<Record<string, number>>({});
+  const [offlineStart, setOfflineStart] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -34,13 +35,25 @@ export default function Play() {
       })
       .catch(err => {
         console.error('loadAllPresets failed', err);
-        toast.error('Failed to load presets: ' + (err?.message ?? 'unknown'));
+        if (isTransientDatabaseError(err)) {
+          setOfflineStart(true);
+          setPresets(FALLBACK_PRESETS);
+          setT2Params(flattenParams(FALLBACK_PRESETS.T1_medium));
+          toast.warning('Backend is still warming up. Starting games with built-in presets for now.');
+        } else {
+          toast.error('Failed to load presets: ' + (err?.message ?? 'unknown'));
+        }
       });
     loadT3Ranges()
       .then(setRanges)
       .catch(err => {
         console.error('loadT3Ranges failed', err);
-        toast.error('Failed to load ranges: ' + (err?.message ?? 'unknown'));
+        if (isTransientDatabaseError(err)) {
+          setOfflineStart(true);
+          setRanges(FALLBACK_T3_RANGES);
+        } else {
+          toast.error('Failed to load ranges: ' + (err?.message ?? 'unknown'));
+        }
       });
   }, [user]);
 
@@ -50,7 +63,16 @@ export default function Play() {
     const { data, error } = await supabase.from('game_sessions').insert([{
       user_id: user.id, nickname, regime, params: params as any,
     }]).select('id').single();
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      if (isTransientDatabaseError(error)) {
+        const localId = `local-${crypto.randomUUID()}`;
+        sessionStorage.setItem(`local-session:${localId}`, JSON.stringify({ id: localId, user_id: user.id, nickname, regime, params }));
+        toast.warning('Backend is reconnecting. Your game will start now and save results if the connection recovers.');
+        nav(`/session/${localId}`);
+        return;
+      }
+      toast.error(error.message); return;
+    }
     nav(`/session/${data.id}`);
   };
 
@@ -71,6 +93,11 @@ export default function Play() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <div className="p-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        {offlineStart && (
+          <div className="md:col-span-3 border border-border rounded-lg bg-card p-3 text-xs text-muted-foreground">
+            Backend is reconnecting. Play is enabled with built-in defaults until admin parameters load again.
+          </div>
+        )}
         {/* T1 */}
         <div className="border border-border rounded-lg p-5 bg-card space-y-3">
           <h2 className="font-arcade text-primary">T1 — Preset</h2>
