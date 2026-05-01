@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, useProfile } from '@/lib/auth';
 import { toast } from 'sonner';
+import { FeedbackDialog } from '@/components/FeedbackDialog';
 
 const SRC = 'dash-delivery';
 
@@ -84,8 +85,10 @@ export default function SessionHost() {
   }
 
   return (
-    <div className="w-screen h-screen bg-background">
+    <div className="w-screen h-screen bg-background relative">
       <iframe ref={iframeRef} src="/game" className="w-full h-full border-0" title="Dash Delivery game" />
+      <Button variant="outline" size="sm" onClick={() => nav('/play')} className="absolute top-2 left-2 z-50">← Exit</Button>
+      <FeedbackDialog />
     </div>
   );
 }
