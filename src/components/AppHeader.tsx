@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth, useProfile, signOut } from '@/lib/auth';
+import { isWhitelistedAdmin, useAuth, useProfile, signOut } from '@/lib/auth';
 import { FeedbackDialog } from './FeedbackDialog';
 import { Shield, Gamepad2, LogOut } from 'lucide-react';
 
@@ -10,6 +10,7 @@ export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
   const { user } = useAuth();
   const { profile, isAdmin, loading: profileLoading } = useProfile(user);
   const { pathname } = useLocation();
+  const showAdmin = isAdmin || isWhitelistedAdmin(user);
 
   return (
     <header className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-40">
@@ -21,13 +22,13 @@ export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
               <Link to="/play"><Gamepad2 className="h-4 w-4" /> Play</Link>
             </Button>
           )}
-          {!profileLoading && isAdmin && pathname !== '/admin' && (
+          {showAdmin && pathname !== '/admin' && (
             <Button asChild variant="outline" size="sm" className="gap-2">
               <Link to="/admin"><Shield className="h-4 w-4" /> Admin</Link>
             </Button>
           )}
           <FeedbackDialog variant="inline" />
-          {profile && <span className="hidden md:inline text-xs text-muted-foreground">{profile.nickname}</span>}
+          <span className="hidden md:inline text-xs text-muted-foreground">{profile?.nickname || user?.user_metadata?.nickname || user?.email?.split('@')[0]}</span>
           {user && (
             <Button variant="ghost" size="sm" onClick={signOut} className="gap-1">
               <LogOut className="h-4 w-4" /> <span className="hidden md:inline">Log out</span>
