@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth, useProfile, signOut } from '@/lib/auth';
+import { useAuth, useProfile } from '@/lib/auth';
+import { AppHeader } from '@/components/AppHeader';
 import {
   loadAllPresets, loadT3Ranges, generateT3, flattenParams, unflattenParams,
   NUMERIC_FIELD_LIST, FIELD_LABELS, type ResolvedParams, type RegimeKey,
@@ -14,7 +15,7 @@ import { toast } from 'sonner';
 export default function Play() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const { profile, isAdmin } = useProfile(user?.id);
+  const { profile } = useProfile(user?.id);
   const [presets, setPresets] = useState<Record<string, ResolvedParams>>({});
   const [ranges, setRanges] = useState<{ params_min: any; params_max: any } | null>(null);
   const [t2Params, setT2Params] = useState<Record<string, number>>({});
@@ -28,7 +29,8 @@ export default function Play() {
   }, []);
 
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
-    if (!user || !profile) return;
+    if (!user) { toast.error('Not signed in'); return; }
+    if (!profile) { toast.error('Profile not loaded yet — try again'); return; }
     const { data, error } = await supabase.from('game_sessions').insert([{
       user_id: user.id, nickname: profile.nickname, regime, params: params as any,
     }]).select('id').single();
@@ -50,17 +52,9 @@ export default function Play() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <header className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-arcade text-primary">Dash Delivery Lab</h1>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">{profile?.nickname}</span>
-          {isAdmin && <Button asChild variant="outline" size="sm"><Link to="/admin">Admin</Link></Button>}
-          <Button variant="ghost" size="sm" onClick={signOut}>Log out</Button>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <div className="p-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* T1 */}
         <div className="border border-border rounded-lg p-5 bg-card space-y-3">
           <h2 className="font-arcade text-primary">T1 — Preset</h2>

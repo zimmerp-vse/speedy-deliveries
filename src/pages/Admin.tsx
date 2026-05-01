@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth, useProfile, signOut } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
+import { AppHeader } from '@/components/AppHeader';
 import {
   loadAllPresets, loadT3Ranges, flattenParams, unflattenParams,
   NUMERIC_FIELD_LIST, FIELD_LABELS,
@@ -17,7 +17,6 @@ type PresetKey = 'T1_easy' | 'T1_medium' | 'T1_hard';
 
 export default function Admin() {
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
   const [presets, setPresets] = useState<Record<PresetKey, Record<string, number>>>({} as any);
   const [rangesMin, setRangesMin] = useState<Record<string, number>>({});
   const [rangesMax, setRangesMax] = useState<Record<string, number>>({});
@@ -47,17 +46,14 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <header className="max-w-6xl mx-auto flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-arcade text-primary">Admin · {profile?.nickname}</h1>
-        <div className="flex gap-2"><Button asChild variant="outline" size="sm"><Link to="/play">Play</Link></Button><Button variant="ghost" size="sm" onClick={signOut}>Log out</Button></div>
-      </header>
-
-      <Tabs defaultValue="presets" className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <AppHeader title="Admin · Dash Delivery Lab" />
+      <Tabs defaultValue="presets" className="max-w-6xl mx-auto p-6">
         <TabsList>
           <TabsTrigger value="presets">T1 presets</TabsTrigger>
           <TabsTrigger value="ranges">T3 ranges</TabsTrigger>
           <TabsTrigger value="sessions">Sessions & export</TabsTrigger>
+          <TabsTrigger value="feedback">Feedback</TabsTrigger>
         </TabsList>
 
         <TabsContent value="presets" className="grid md:grid-cols-3 gap-4 mt-4">
@@ -94,6 +90,9 @@ export default function Admin() {
 
         <TabsContent value="sessions" className="mt-4">
           <SessionsPanel />
+        </TabsContent>
+        <TabsContent value="feedback" className="mt-4">
+          <FeedbackPanel />
         </TabsContent>
       </Tabs>
     </div>
@@ -153,6 +152,60 @@ function SessionsPanel() {
                 <td className="p-2">{s.regime}</td>
                 <td className="p-2">{s.ended_reason ?? '—'}</td>
                 <td className="p-2 font-mono">{s.totals ? `D:${s.totals.deliveries} $${s.totals.money}` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackPanel() {
+  const [items, setItems] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(1000)
+      .then(({ data }) => setItems(data ?? []));
+  };
+  useEffect(load, []);
+
+  const exportCSV = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.from('feedback').select('*').order('created_at');
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`,
+      (data ?? []).map(r => ({
+        created_at: r.created_at, nickname: r.nickname, email: r.email,
+        user_id: r.user_id, message: r.message,
+      })));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{items.length} feedback entries</p>
+        <Button onClick={exportCSV} disabled={busy}>{busy ? 'Exporting…' : 'Export CSV'}</Button>
+      </div>
+      <div className="border border-border rounded-lg overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-muted">
+            <tr>
+              <th className="p-2 text-left">Date</th>
+              <th className="p-2 text-left">Nickname</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2 text-left">Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(r => (
+              <tr key={r.id} className="border-t border-border align-top">
+                <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                <td className="p-2">{r.nickname ?? '—'}</td>
+                <td className="p-2">{r.email ?? '—'}</td>
+                <td className="p-2 max-w-md whitespace-pre-wrap break-words">{r.message}</td>
               </tr>
             ))}
           </tbody>
