@@ -8,7 +8,7 @@ interface Props { title?: string; }
 
 export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
   const { user } = useAuth();
-  const { profile, isAdmin } = useProfile(user?.id);
+  const { profile, isAdmin, loading: profileLoading } = useProfile(user);
   const { pathname } = useLocation();
 
   return (
@@ -21,7 +21,7 @@ export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
               <Link to="/play"><Gamepad2 className="h-4 w-4" /> Play</Link>
             </Button>
           )}
-          {isAdmin && pathname !== '/admin' && (
+          {!profileLoading && isAdmin && pathname !== '/admin' && (
             <Button asChild variant="outline" size="sm" className="gap-2">
               <Link to="/admin"><Shield className="h-4 w-4" /> Admin</Link>
             </Button>
