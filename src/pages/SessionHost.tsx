@@ -12,7 +12,7 @@ export default function SessionHost() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
+  const { profile } = useProfile(user);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ended, setEnded] = useState<null | { totals: any; reason: string }>(null);
   const sessionRef = useRef<any>(null);
@@ -30,12 +30,13 @@ export default function SessionHost() {
       const d = e.data;
       if (!d || d.source !== SRC) return;
       const session = sessionRef.current;
-      if (d.type === 'READY' && session && profile) {
+      if (d.type === 'READY' && session && user) {
+        const nickname = profile?.nickname || user.user_metadata?.nickname || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
         iframeRef.current?.contentWindow?.postMessage({
           source: SRC, type: 'INIT', version: 1,
           payload: {
             session: { sessionId: session.id },
-            player: { nickname: profile.nickname, id: user?.id },
+            player: { nickname, id: user.id },
             difficulty: session.params.difficulty,
             economy: session.params.economy,
             ui: { showQuitButton: true, autoStart: true },
