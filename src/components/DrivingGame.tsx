@@ -65,6 +65,10 @@ export function DrivingGame() {
     };
     resize();
     window.addEventListener('resize', resize);
+    // Make sure this iframe window grabs keyboard focus so arrow keys work without an extra click.
+    try { window.focus(); } catch {}
+    const grab = () => { try { window.focus(); } catch {} };
+    window.addEventListener('pointerdown', grab);
 
     const engine = new GameEngine(canvas);
     engineRef.current = engine;
