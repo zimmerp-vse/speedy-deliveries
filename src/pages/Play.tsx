@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 export default function Play() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const { profile, isAdmin } = useProfile(user?.id);
+  const { profile } = useProfile(user?.id);
   const [presets, setPresets] = useState<Record<string, ResolvedParams>>({});
   const [ranges, setRanges] = useState<{ params_min: any; params_max: any } | null>(null);
   const [t2Params, setT2Params] = useState<Record<string, number>>({});
