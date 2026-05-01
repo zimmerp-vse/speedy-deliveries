@@ -61,16 +61,14 @@ export function FeedbackDialog({ variant = 'floating' }: Props) {
     <Dialog open={open} onOpenChange={onOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
-        <DialogHeader><DialogTitle>Send feedback</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Send feedback</DialogTitle>
+          <DialogDescription>Your nickname and email will be saved from your login.</DialogDescription>
+        </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="fb-nick" className="text-xs">Nickname</Label>
-            <Input id="fb-nick" value={nickname} maxLength={100} onChange={e => setNickname(e.target.value)} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="fb-email" className="text-xs">Email</Label>
-            <Input id="fb-email" type="email" value={email} maxLength={320} onChange={e => setEmail(e.target.value)} />
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Sending as {profile?.nickname || user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'your account'} · {user?.email ?? 'not signed in'}
+          </p>
           <div className="space-y-1">
             <Label htmlFor="fb-msg" className="text-xs">Message *</Label>
             <Textarea id="fb-msg" value={message} maxLength={5000} rows={5} onChange={e => setMessage(e.target.value)} />
