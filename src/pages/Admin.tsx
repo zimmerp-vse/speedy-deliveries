@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth, useProfile, signOut } from '@/lib/auth';
+import { useAuth } from '@/lib/auth';
+import { AppHeader } from '@/components/AppHeader';
 import {
   loadAllPresets, loadT3Ranges, flattenParams, unflattenParams,
   NUMERIC_FIELD_LIST, FIELD_LABELS,
