@@ -160,3 +160,57 @@ function SessionsPanel() {
     </div>
   );
 }
+
+function FeedbackPanel() {
+  const [items, setItems] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(1000)
+      .then(({ data }) => setItems(data ?? []));
+  };
+  useEffect(load, []);
+
+  const exportCSV = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.from('feedback').select('*').order('created_at');
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`,
+      (data ?? []).map(r => ({
+        created_at: r.created_at, nickname: r.nickname, email: r.email,
+        user_id: r.user_id, message: r.message,
+      })));
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{items.length} feedback entries</p>
+        <Button onClick={exportCSV} disabled={busy}>{busy ? 'Exporting…' : 'Export CSV'}</Button>
+      </div>
+      <div className="border border-border rounded-lg overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-muted">
+            <tr>
+              <th className="p-2 text-left">Date</th>
+              <th className="p-2 text-left">Nickname</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2 text-left">Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map(r => (
+              <tr key={r.id} className="border-t border-border align-top">
+                <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                <td className="p-2">{r.nickname ?? '—'}</td>
+                <td className="p-2">{r.email ?? '—'}</td>
+                <td className="p-2 max-w-md whitespace-pre-wrap break-words">{r.message}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
