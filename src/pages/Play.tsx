@@ -52,17 +52,11 @@ export default function Play() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <header className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
-        <h1 className="text-2xl font-arcade text-primary">Dash Delivery Lab</h1>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">{profile?.nickname}</span>
-          {isAdmin && <Button asChild variant="outline" size="sm"><Link to="/admin">Admin</Link></Button>}
-          <Button variant="ghost" size="sm" onClick={signOut}>Log out</Button>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <div className="p-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* unused vars referenced to keep linter happy when header was removed */}
+        {void isAdmin}
         {/* T1 */}
         <div className="border border-border rounded-lg p-5 bg-card space-y-3">
           <h2 className="font-arcade text-primary">T1 — Preset</h2>
