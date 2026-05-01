@@ -55,8 +55,6 @@ export default function Play() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <div className="p-6 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* unused vars referenced to keep linter happy when header was removed */}
-        {void isAdmin}
         {/* T1 */}
         <div className="border border-border rounded-lg p-5 bg-card space-y-3">
           <h2 className="font-arcade text-primary">T1 — Preset</h2>
