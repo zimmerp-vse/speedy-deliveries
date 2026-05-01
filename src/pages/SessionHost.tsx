@@ -15,38 +15,49 @@ export default function SessionHost() {
   const { profile } = useProfile(user);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ended, setEnded] = useState<null | { totals: any; reason: string }>(null);
+  const [session, setSession] = useState<any>(null);
+  const [gameReady, setGameReady] = useState(false);
   const sessionRef = useRef<any>(null);
+  const initSentRef = useRef(false);
 
   useEffect(() => {
     if (!id || !user) return;
     supabase.from('game_sessions').select('*').eq('id', id).single().then(({ data, error }) => {
       if (error || !data) { toast.error('Session not found'); nav('/play'); return; }
       sessionRef.current = data;
+      setSession(data);
     });
   }, [id, user, nav]);
+
+  useEffect(() => {
+    if (!gameReady || !session || !user || initSentRef.current) return;
+    initSentRef.current = true;
+    const nickname = profile?.nickname || user.user_metadata?.nickname || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
+    iframeRef.current?.contentWindow?.postMessage({
+      source: SRC, type: 'INIT', version: 1,
+      payload: {
+        session: { sessionId: session.id },
+        player: { nickname, id: user.id },
+        difficulty: session.params.difficulty,
+        economy: session.params.economy,
+        ui: { showQuitButton: true, autoStart: true },
+        extra: { regime: session.regime },
+      },
+    }, '*');
+  }, [gameReady, session, user, profile]);
 
   useEffect(() => {
     const onMsg = async (e: MessageEvent) => {
       const d = e.data;
       if (!d || d.source !== SRC) return;
-      const session = sessionRef.current;
-      if (d.type === 'READY' && session && user) {
-        const nickname = profile?.nickname || user.user_metadata?.nickname || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
-        iframeRef.current?.contentWindow?.postMessage({
-          source: SRC, type: 'INIT', version: 1,
-          payload: {
-            session: { sessionId: session.id },
-            player: { nickname, id: user.id },
-            difficulty: session.params.difficulty,
-            economy: session.params.economy,
-            ui: { showQuitButton: true, autoStart: true },
-            extra: { regime: session.regime },
-          },
-        }, '*');
+      const currentSession = sessionRef.current;
+      if (d.type === 'READY') {
+        setGameReady(true);
       } else if (d.type === 'ROUND_END') {
+        if (!currentSession) return;
         const p = d.payload;
         await supabase.from('round_events').insert({
-          session_id: session.id,
+          session_id: currentSession.id,
           round_number: p.round,
           outcome: p.outcome,
           time_ms: p.timeMs,
@@ -56,18 +67,19 @@ export default function SessionHost() {
           money_balance: p.moneyBalance,
         });
       } else if (d.type === 'GAME_END') {
+        if (!currentSession) return;
         const p = d.payload;
         await supabase.from('game_sessions').update({
           ended_at: new Date().toISOString(),
           ended_reason: p.endedReason,
           totals: p.totals,
-        }).eq('id', session.id);
+        }).eq('id', currentSession.id);
         setEnded({ totals: p.totals, reason: p.endedReason });
       }
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [profile, user]);
+  }, []);
 
   if (ended) {
     return (
