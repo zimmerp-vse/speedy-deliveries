@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth, useProfile } from '@/lib/auth';
 import { toast } from 'sonner';
 import { FeedbackDialog } from '@/components/FeedbackDialog';
+import { isTransientDatabaseError } from '@/lib/regimes';
 
 const SRC = 'dash-delivery';
 
@@ -22,6 +23,14 @@ export default function SessionHost() {
 
   useEffect(() => {
     if (!id || !user) return;
+    if (id.startsWith('local-')) {
+      const raw = sessionStorage.getItem(`local-session:${id}`);
+      if (!raw) { toast.error('Session not found'); nav('/play'); return; }
+      const localSession = JSON.parse(raw);
+      sessionRef.current = localSession;
+      setSession(localSession);
+      return;
+    }
     supabase.from('game_sessions').select('*').eq('id', id).single().then(({ data, error }) => {
       if (error || !data) { toast.error('Session not found'); nav('/play'); return; }
       sessionRef.current = data;
@@ -56,7 +65,8 @@ export default function SessionHost() {
       } else if (d.type === 'ROUND_END') {
         if (!currentSession) return;
         const p = d.payload;
-        await supabase.from('round_events').insert({
+        if (String(currentSession.id).startsWith('local-')) return;
+        const { error } = await supabase.from('round_events').insert({
           session_id: currentSession.id,
           round_number: p.round,
           outcome: p.outcome,
@@ -66,14 +76,17 @@ export default function SessionHost() {
           money_lost: p.moneyLost,
           money_balance: p.moneyBalance,
         });
+        if (error && !isTransientDatabaseError(error)) console.error('round_events insert failed', error);
       } else if (d.type === 'GAME_END') {
         if (!currentSession) return;
         const p = d.payload;
-        await supabase.from('game_sessions').update({
+        if (String(currentSession.id).startsWith('local-')) { setEnded({ totals: p.totals, reason: p.endedReason }); return; }
+        const { error } = await supabase.from('game_sessions').update({
           ended_at: new Date().toISOString(),
           ended_reason: p.endedReason,
           totals: p.totals,
         }).eq('id', currentSession.id);
+        if (error && !isTransientDatabaseError(error)) console.error('game_sessions update failed', error);
         setEnded({ totals: p.totals, reason: p.endedReason });
       }
     };
