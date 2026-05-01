@@ -117,6 +117,19 @@ export function DrivingGame() {
         setMoney(GAME_CONFIG.startingMoney);
         setTimeRemaining(GAME_CONFIG.tripDurationMs / 1000);
         embedHost.sendInitAck(applied as unknown as Record<string, unknown>, sessionIdRef.current);
+        if (msg.payload.ui?.autoStart) {
+          // Defer to next tick so engine refs are ready.
+          setTimeout(() => {
+            const engine = engineRef.current;
+            if (!engine) return;
+            roundsRef.current = [];
+            endedRef.current = false;
+            setCelebrating(false);
+            setPhase('playing');
+            setCurrentRound(1);
+            engine.startRound();
+          }, 0);
+        }
       } else if (msg.type === 'QUIT') {
         engineRef.current?.quit();
       }
