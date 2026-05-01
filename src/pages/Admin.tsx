@@ -17,7 +17,6 @@ type PresetKey = 'T1_easy' | 'T1_medium' | 'T1_hard';
 
 export default function Admin() {
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
   const [presets, setPresets] = useState<Record<PresetKey, Record<string, number>>>({} as any);
   const [rangesMin, setRangesMin] = useState<Record<string, number>>({});
   const [rangesMax, setRangesMax] = useState<Record<string, number>>({});
@@ -47,17 +46,14 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <header className="max-w-6xl mx-auto flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-arcade text-primary">Admin · {profile?.nickname}</h1>
-        <div className="flex gap-2"><Button asChild variant="outline" size="sm"><Link to="/play">Play</Link></Button><Button variant="ghost" size="sm" onClick={signOut}>Log out</Button></div>
-      </header>
-
-      <Tabs defaultValue="presets" className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <AppHeader title="Admin · Dash Delivery Lab" />
+      <Tabs defaultValue="presets" className="max-w-6xl mx-auto p-6">
         <TabsList>
           <TabsTrigger value="presets">T1 presets</TabsTrigger>
           <TabsTrigger value="ranges">T3 ranges</TabsTrigger>
           <TabsTrigger value="sessions">Sessions & export</TabsTrigger>
+          <TabsTrigger value="feedback">Feedback</TabsTrigger>
         </TabsList>
 
         <TabsContent value="presets" className="grid md:grid-cols-3 gap-4 mt-4">
