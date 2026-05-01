@@ -66,6 +66,8 @@ export default function SessionHost() {
     return () => window.removeEventListener('click', refocus);
   }, []);
 
+  const pendingRoundsRef = useRef<any[]>([]);
+
   useEffect(() => {
     const onMsg = async (e: MessageEvent) => {
       const d = e.data;
@@ -76,9 +78,7 @@ export default function SessionHost() {
       } else if (d.type === 'ROUND_END') {
         if (!currentSession) return;
         const p = d.payload;
-        if (String(currentSession.id).startsWith('local-')) return;
-        const { error } = await supabase.from('round_events').insert({
-          session_id: currentSession.id,
+        const roundRow = {
           round_number: p.round,
           outcome: p.outcome,
           time_ms: p.timeMs,
@@ -86,24 +86,67 @@ export default function SessionHost() {
           money_earned: p.moneyEarned,
           money_lost: p.moneyLost,
           money_balance: p.moneyBalance,
+        };
+        if (String(currentSession.id).startsWith('local-')) {
+          pendingRoundsRef.current.push(roundRow);
+          return;
+        }
+        const { error } = await supabase.from('round_events').insert({
+          session_id: currentSession.id,
+          ...roundRow,
         });
-        if (error && !isTransientDatabaseError(error)) console.error('round_events insert failed', error);
+        if (error) {
+          console.error('round_events insert failed', error);
+          if (isTransientDatabaseError(error)) pendingRoundsRef.current.push(roundRow);
+        }
       } else if (d.type === 'GAME_END') {
         if (!currentSession) return;
         const p = d.payload;
-        if (String(currentSession.id).startsWith('local-')) { setEnded({ totals: p.totals, reason: p.endedReason }); return; }
-        const { error } = await supabase.from('game_sessions').update({
-          ended_at: new Date().toISOString(),
-          ended_reason: p.endedReason,
-          totals: p.totals,
-        }).eq('id', currentSession.id);
-        if (error && !isTransientDatabaseError(error)) console.error('game_sessions update failed', error);
+        const isLocal = String(currentSession.id).startsWith('local-');
+
+        // Try to persist a local session to DB now that auth/db may be back.
+        if (isLocal && user) {
+          const { data: created, error: createErr } = await supabase.from('game_sessions').insert([{
+            user_id: user.id,
+            nickname: currentSession.nickname,
+            regime: currentSession.regime,
+            params: currentSession.params,
+            ended_at: new Date().toISOString(),
+            ended_reason: p.endedReason,
+            totals: p.totals,
+          }]).select('id').single();
+          if (!createErr && created) {
+            const rows = pendingRoundsRef.current.map(r => ({ session_id: created.id, ...r }));
+            if (rows.length) {
+              const { error: re } = await supabase.from('round_events').insert(rows);
+              if (re) console.error('round_events bulk insert failed', re);
+            }
+            sessionStorage.removeItem(`local-session:${currentSession.id}`);
+            toast.success('Saved your game results to the server.');
+          } else if (createErr) {
+            console.error('failed to persist local session', createErr);
+            toast.error('Could not save results: ' + createErr.message);
+          }
+        } else {
+          const { error } = await supabase.from('game_sessions').update({
+            ended_at: new Date().toISOString(),
+            ended_reason: p.endedReason,
+            totals: p.totals,
+          }).eq('id', currentSession.id);
+          if (error) console.error('game_sessions update failed', error);
+          // Flush any rounds buffered during transient failures.
+          if (pendingRoundsRef.current.length) {
+            const rows = pendingRoundsRef.current.map(r => ({ session_id: currentSession.id, ...r }));
+            await supabase.from('round_events').insert(rows);
+            pendingRoundsRef.current = [];
+          }
+        }
         setEnded({ totals: p.totals, reason: p.endedReason });
       }
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, []);
+  }, [user]);
 
   if (ended) {
     return (
@@ -123,7 +166,14 @@ export default function SessionHost() {
 
   return (
     <div className="w-screen h-screen bg-background relative">
-      <iframe ref={iframeRef} src="/game" className="w-full h-full border-0" title="Dash Delivery game" />
+      <iframe
+        ref={iframeRef}
+        src="/game"
+        className="w-full h-full border-0"
+        title="Dash Delivery game"
+        tabIndex={0}
+        allow="autoplay"
+      />
       <Button variant="outline" size="sm" onClick={() => nav('/play')} className="absolute top-2 left-2 z-50">← Exit</Button>
       <FeedbackDialog />
     </div>
