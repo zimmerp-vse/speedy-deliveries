@@ -37,7 +37,7 @@ export default function SessionHost() {
             player: { nickname: profile.nickname, id: user?.id },
             difficulty: session.params.difficulty,
             economy: session.params.economy,
-            ui: { showQuitButton: true },
+            ui: { showQuitButton: true, autoStart: true },
             extra: { regime: session.regime },
           },
         }, '*');
