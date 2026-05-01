@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { MessageSquare } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,8 +10,6 @@ import { useAuth, useProfile } from '@/lib/auth';
 import { toast } from 'sonner';
 
 const schema = z.object({
-  nickname: z.string().trim().max(100).optional().or(z.literal('')),
-  email: z.string().trim().email('Invalid email').max(320).optional().or(z.literal('')),
   message: z.string().trim().min(1, 'Message is required').max(5000),
 });
 
@@ -20,30 +17,28 @@ interface Props { variant?: 'floating' | 'inline'; }
 
 export function FeedbackDialog({ variant = 'floating' }: Props) {
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
+  const { profile } = useProfile(user);
   const [open, setOpen] = useState(false);
-  const [nickname, setNickname] = useState('');
-  const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   const onOpen = (v: boolean) => {
     if (v) {
-      setNickname(profile?.nickname ?? '');
-      setEmail(user?.email ?? '');
       setMessage('');
     }
     setOpen(v);
   };
 
   const submit = async () => {
-    const parsed = schema.safeParse({ nickname, email, message });
+    if (!user?.email) { toast.error('Please log in to send feedback'); return; }
+    const nickname = profile?.nickname || user.user_metadata?.nickname || user.email.split('@')[0];
+    const parsed = schema.safeParse({ message });
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setBusy(true);
     const { error } = await supabase.from('feedback').insert({
-      user_id: user?.id ?? null,
-      nickname: nickname || null,
-      email: email || null,
+      user_id: user.id,
+      nickname,
+      email: user.email,
       message: parsed.data.message,
     });
     setBusy(false);
