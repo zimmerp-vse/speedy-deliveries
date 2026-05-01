@@ -53,7 +53,18 @@ export default function SessionHost() {
         extra: { regime: session.regime },
       },
     }, '*');
+    // Give the iframe keyboard focus so arrow keys/space work without an extra click.
+    setTimeout(() => {
+      try { iframeRef.current?.focus(); iframeRef.current?.contentWindow?.focus(); } catch {}
+    }, 50);
   }, [gameReady, session, user, profile]);
+
+  // Re-focus iframe whenever user clicks the page (so controls work after any UI interaction).
+  useEffect(() => {
+    const refocus = () => { try { iframeRef.current?.contentWindow?.focus(); } catch {} };
+    window.addEventListener('click', refocus);
+    return () => window.removeEventListener('click', refocus);
+  }, []);
 
   useEffect(() => {
     const onMsg = async (e: MessageEvent) => {
