@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
+import { FeedbackDialog } from '@/components/FeedbackDialog';
 
 export default function Landing() {
   const { user, loading } = useAuth();
@@ -24,6 +25,7 @@ export default function Landing() {
           Try the game directly: <Link to="/game" className="underline">/game</Link>
         </p>
       </div>
+      <FeedbackDialog />
     </div>
   );
 }
