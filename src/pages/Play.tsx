@@ -21,12 +21,28 @@ export default function Play() {
   const [t2Params, setT2Params] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    loadAllPresets().then(rows => {
-      const m: any = {}; for (const r of rows) m[r.regime] = r.params; setPresets(m);
-      if (rows.length) setT2Params(flattenParams(rows.find((r: any) => r.regime === 'T1_medium')?.params ?? rows[0].params));
-    });
-    loadT3Ranges().then(setRanges);
-  }, []);
+    if (!user) return;
+    loadAllPresets()
+      .then(rows => {
+        const m: any = {};
+        for (const r of rows) m[r.regime] = r.params;
+        setPresets(m);
+        if (rows.length) {
+          const med = rows.find((r: any) => r.regime === 'T1_medium')?.params ?? rows[0].params;
+          setT2Params(flattenParams(med));
+        }
+      })
+      .catch(err => {
+        console.error('loadAllPresets failed', err);
+        toast.error('Failed to load presets: ' + (err?.message ?? 'unknown'));
+      });
+    loadT3Ranges()
+      .then(setRanges)
+      .catch(err => {
+        console.error('loadT3Ranges failed', err);
+        toast.error('Failed to load ranges: ' + (err?.message ?? 'unknown'));
+      });
+  }, [user]);
 
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
     if (!user) { toast.error('Not signed in'); return; }
