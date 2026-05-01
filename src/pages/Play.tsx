@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth, useProfile, signOut } from '@/lib/auth';
+import { useAuth, useProfile } from '@/lib/auth';
+import { AppHeader } from '@/components/AppHeader';
 import {
   loadAllPresets, loadT3Ranges, generateT3, flattenParams, unflattenParams,
   NUMERIC_FIELD_LIST, FIELD_LABELS, type ResolvedParams, type RegimeKey,
@@ -28,7 +29,8 @@ export default function Play() {
   }, []);
 
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
-    if (!user || !profile) return;
+    if (!user) { toast.error('Not signed in'); return; }
+    if (!profile) { toast.error('Profile not loaded yet — try again'); return; }
     const { data, error } = await supabase.from('game_sessions').insert([{
       user_id: user.id, nickname: profile.nickname, regime, params: params as any,
     }]).select('id').single();
