@@ -219,14 +219,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      ensure_current_user_profile: {
-        Args: never
-        Returns: {
-          age: number
-          is_admin: boolean
-          nickname: string
-        }[]
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
