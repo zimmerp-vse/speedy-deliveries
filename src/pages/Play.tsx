@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 export default function Play() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const { profile } = useProfile(user?.id);
+  const { profile } = useProfile(user);
   const [presets, setPresets] = useState<Record<string, ResolvedParams>>({});
   const [ranges, setRanges] = useState<{ params_min: any; params_max: any } | null>(null);
   const [t2Params, setT2Params] = useState<Record<string, number>>({});
@@ -30,9 +30,9 @@ export default function Play() {
 
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
     if (!user) { toast.error('Not signed in'); return; }
-    if (!profile) { toast.error('Profile not loaded yet — try again'); return; }
+    const nickname = profile?.nickname || user.user_metadata?.nickname || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
     const { data, error } = await supabase.from('game_sessions').insert([{
-      user_id: user.id, nickname: profile.nickname, regime, params: params as any,
+      user_id: user.id, nickname, regime, params: params as any,
     }]).select('id').single();
     if (error) { toast.error(error.message); return; }
     nav(`/session/${data.id}`);
