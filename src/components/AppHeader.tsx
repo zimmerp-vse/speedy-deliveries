@@ -8,7 +8,7 @@ interface Props { title?: string; }
 
 export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
   const { user } = useAuth();
-  const { profile, isAdmin, loading: profileLoading } = useProfile(user);
+  const { profile, isAdmin } = useProfile(user);
   const { pathname } = useLocation();
   const showAdmin = isAdmin || isWhitelistedAdmin(user);
 
