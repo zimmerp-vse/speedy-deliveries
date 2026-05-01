@@ -141,6 +141,7 @@ export function DrivingGame() {
 
     return () => {
       window.removeEventListener('resize', resize);
+      window.removeEventListener('pointerdown', grab);
       off();
       embedHost.stop();
       engine.destroy();
