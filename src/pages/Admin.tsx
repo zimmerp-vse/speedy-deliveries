@@ -91,6 +91,9 @@ export default function Admin() {
         <TabsContent value="sessions" className="mt-4">
           <SessionsPanel />
         </TabsContent>
+        <TabsContent value="feedback" className="mt-4">
+          <FeedbackPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
