@@ -1,90 +1,41 @@
+## What's happening
 
-# Master Testing Platform for Dash Delivery
+Data loads correctly in both panels (feedback: 4 rows, sessions: 1 row, round_events: 4 rows in the database — admin RLS is working). But clicking **Export CSV** in either panel appears to do nothing, or downloads a blank/empty file with no error message.
 
-Build a master platform on top of this project that registers volunteer users, lets them pick a testing regime (T1/T2/T3), embeds the game in an iframe, and stores the full structured dataset for admin export.
+## Root causes
 
-## Routes & flow
+1. **Silent empty downloads.** `downloadCSV` in `src/lib/csv.ts` handles the `rows.length === 0` case by creating an empty blob with no headers and triggering a download anyway. Result: a 0-byte file appears (or the browser silently discards it) and no toast tells the user why. This masks every other problem.
 
-- `/` — Landing page. If logged in: redirect to `/play`. If not: links to `/login` and `/register`.
-- `/register` — Email + password + nickname + age + date of birth (age stored as integer, validated 6–120).
-- `/login` — Email + password sign-in.
-- `/play` — Authenticated regime picker. Three cards: T1 (Easy/Medium/Hard buttons), T2 (form with all difficulty/economy params), T3 (single "Generate & play" button — params randomized in admin-defined ranges, shown for transparency before launch).
-- `/session/:id` — Embeds the existing game (`/game`) in an iframe, sends INIT with chosen params, captures all `ROUND_END` / `GAME_END` events, persists them. Shows a summary screen at the end.
-- `/admin` — Admin-only (whitelist: nickname `zimmerp`). Tabs: **Presets** (edit T1 easy/medium/hard), **T3 Ranges** (min/max for each random param), **Sessions** (table of all sessions, filters, "Export CSV" button), **Users** (read-only list).
+2. **No success feedback.** Both export buttons in `src/pages/Admin.tsx` reset the busy flag but never confirm success, so even a working export looks like nothing happened if the browser saves the file silently.
 
-The current game stays at `/game` — it's the iframe source. The existing `DrivingGame` component is unchanged; only the host page wraps it.
+3. **Sessions export can produce 0 rows even when data exists.** `exportCSV` in `SessionsPanel` builds rows by iterating `round_events` and joining to `game_sessions`. If `round_events` returns empty (e.g. RLS edge case, network blip, or sessions with no rounds), the loop yields zero rows and the CSV is blank.
 
-## Database (Lovable Cloud)
+4. **No diagnostic logging.** When something fails inside the export pipeline, errors are only surfaced via toast and the user sees nothing actionable.
 
-- `profiles` — `id` (FK auth.users), `nickname` (unique), `age`, `date_of_birth`, `created_at`. Auto-created via trigger on signup.
-- `user_roles` — `id`, `user_id`, `role` (enum `admin`|`user`). Separate table per security rules. `has_role()` SECURITY DEFINER function for RLS.
-- `difficulty_presets` — `id`, `regime` (`T1_easy`|`T1_medium`|`T1_hard`), `params` (jsonb of full InitPayload difficulty+economy), `updated_at`, `updated_by`. Seeded with sensible defaults.
-- `t3_ranges` — single-row config: `params_min` jsonb, `params_max` jsonb. Admin edits.
-- `game_sessions` — `id`, `user_id`, `nickname` (denormalized for export), `regime` (T1_easy/medium/hard, T2, T3), `params` jsonb (the resolved InitPayload sent to game), `started_at`, `ended_at`, `ended_reason` (completed/quit/abandoned), `totals` jsonb (deliveries, money, accidents).
-- `round_events` — `id`, `session_id`, `round_number`, `outcome` (delivered/crash_car/crash_obstacle/crash_pedestrian/malfunction/timeout), `time_ms`, `scene`, `money_earned`, `money_lost`, `money_balance`, `created_at`.
+## Plan
 
-RLS: users read/write only their own sessions and rounds; admins read all. Presets/ranges readable by all authenticated, writable by admins only.
+### 1. `src/lib/csv.ts` — make empty exports explicit
+- Change `downloadCSV` to return a boolean (`true` if a non-empty file was written, `false` otherwise) instead of silently downloading a blank file.
+- When `rows.length === 0`, do NOT trigger a download; just return `false` so the caller can show a toast.
 
-## Admin whitelist
+### 2. `src/pages/Admin.tsx` — `SessionsPanel.exportCSV`
+- Before iterating, check counts of `sess`, `rounds`, `profiles`. Log them with `console.info` for debugging.
+- If `rounds` is empty but `sess` is not, fall back to exporting **session-level rows only** (one row per session, no round columns) so admins still get a usable CSV.
+- After `downloadCSV`, branch on its return value: `toast.success("Exported N rows")` or `toast.warning("Nothing to export")`.
 
-On signup, a DB trigger checks if `NEW.raw_user_meta_data->>'nickname' = 'zimmerp'` and inserts an `admin` role; otherwise inserts `user`. (Can later be managed via admin UI.)
+### 3. `src/pages/Admin.tsx` — `FeedbackPanel.exportCSV`
+- Same treatment: log the row count, branch on the return value of `downloadCSV`, show `toast.success` or `toast.warning`.
+- Fix the column order so the CSV always includes `id` first.
 
-## CSV export
+### 4. Minor cleanup
+- Remove the React "Function components cannot be given refs" warnings in the console: hoist `SessionsPanel` and `FeedbackPanel` out of the `Admin` module body (they're already top-level — the warning is from `AppHeader` being passed a ref by Radix). Wrap `AppHeader` with `React.forwardRef` so it accepts the ref Radix Tabs is forwarding. (Cosmetic but stops the noise.)
 
-Admin clicks "Export CSV". One row per round (joined session + round). Columns:
-`session_id, user_id, nickname, age, regime, started_at, ended_at, ended_reason, total_rounds, trip_duration_ms, car_spawn_rate, obstacle_spawn_rate, pedestrian_spawn_rate, malfunction_probability, max_speed, acceleration, braking, delivery_reward, car_collision_cost, obstacle_collision_cost, pedestrian_collision_cost, malfunction_cost, round_number, outcome, time_ms, scene, money_earned, money_lost, money_balance`
+## Files to edit
 
-Generated client-side from a single Supabase query (no edge function needed).
+- `src/lib/csv.ts` — return boolean, skip empty downloads
+- `src/pages/Admin.tsx` — add success/empty toasts, session-only fallback for sessions export, console.info diagnostics
+- `src/components/AppHeader.tsx` — wrap in `React.forwardRef` to silence ref warning
 
-## Game integration
+## On the credits request
 
-The existing `postMessage` protocol (v1) already supports everything we need. The session host page:
-1. Renders `<iframe src="/game">`.
-2. On `READY` → posts `INIT` with the resolved params + `session: { sessionId }` + `player: { nickname }` + `ui: { showQuitButton: true }`.
-3. On `ROUND_END` → inserts a `round_events` row.
-4. On `GAME_END` → updates the `game_sessions` row with `ended_reason`, `ended_at`, `totals`.
-5. "Abandoned" sessions (user closes tab) stay with `ended_reason = null` — admin can filter them out.
-
-## T1 default presets (seeded)
-
-| Param | Easy | Medium | Hard |
-|---|---|---|---|
-| totalRounds | 5 | 8 | 10 |
-| tripDurationMs | 45000 | 35000 | 25000 |
-| carSpawnRate | 0.02 | 0.04 | 0.07 |
-| obstacleSpawnRate | 0.003 | 0.006 | 0.012 |
-| pedestrianSpawnRate | 0.002 | 0.004 | 0.008 |
-| malfunctionProbability | 0.1 | 0.25 | 0.45 |
-| deliveryReward | 600 | 500 | 400 |
-| carCollisionCost | 200 | 300 | 500 |
-
-Admin can change any of these later.
-
-## T3 default ranges
-
-Each numeric difficulty/economy field gets `[min, max]`; on T3 launch we pick a uniform random value per field. Defaults sit just outside the easy/hard bracket so randomized games span the meaningful difficulty space.
-
-## Files to create
-
-- `src/pages/Landing.tsx`, `Login.tsx`, `Register.tsx`, `Play.tsx`, `SessionHost.tsx`, `Admin.tsx`
-- `src/pages/Game.tsx` — moves current `Index.tsx` game-rendering logic here at route `/game`
-- `src/components/regime/T1Card.tsx`, `T2Form.tsx`, `T3Card.tsx`
-- `src/components/admin/PresetsEditor.tsx`, `T3RangesEditor.tsx`, `SessionsTable.tsx`, `UsersTable.tsx`
-- `src/lib/auth.ts` — `useAuth` hook (session + onAuthStateChange), `useIsAdmin` hook
-- `src/lib/csv.ts` — flatten + download helper
-- `src/lib/regimes.ts` — preset/range fetchers, T3 randomizer
-- Supabase migration: enums, tables, RLS, signup trigger, seed data
-
-## Files to modify
-
-- `src/App.tsx` — add all new routes, auth-guarded wrapper
-- `src/pages/Index.tsx` — becomes the landing redirect (or replaced by `Landing.tsx`)
-
-## Out of scope (this iteration)
-
-- Email verification flow (will disable "Confirm email" in auth settings for faster volunteer onboarding; user can re-enable later)
-- Promoting other users to admin via UI (only zimmerp via signup trigger; manual DB edits possible)
-- Resuming abandoned sessions
-- Per-user dashboards (volunteers just play; admin sees all)
-
-After approval I'll implement everything in one pass and seed the T1 presets and T3 ranges.
+I can't grant credits — that's handled by the Lovable team, not the AI agent. You can reach out via the in-app support chat or email **support@lovable.dev** with a description of what went wrong and they can review your account. I'm sorry for the back-and-forth getting here.
