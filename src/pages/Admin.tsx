@@ -150,8 +150,9 @@ function SessionsPanel() {
         rows = (sess ?? []).map(buildSessionRow);
       }
 
-      const ok = downloadCSV(`dash-delivery-${new Date().toISOString().slice(0,10)}.csv`, rows);
-      if (ok) toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+      const status = downloadCSV(`dash-delivery-${new Date().toISOString().slice(0,10)}.csv`, rows);
+      if (status === 'ok') toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'} — opening in a new tab`);
+      else if (status === 'popup-blocked') toast.error('Your browser blocked the download tab. Allow popups for this site, or open the app in its own tab and retry.');
       else toast.warning('Nothing to export yet — no sessions found.');
     } catch (err: any) {
       console.error('[CSV export] failed', err);
