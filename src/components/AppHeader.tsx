@@ -39,4 +39,4 @@ export const AppHeader = forwardRef<HTMLElement, Props>(function AppHeader({ tit
       </div>
     </header>
   );
-}
+});
