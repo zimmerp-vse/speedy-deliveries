@@ -1,41 +1,37 @@
 ## What's happening
 
-Data loads correctly in both panels (feedback: 4 rows, sessions: 1 row, round_events: 4 rows in the database — admin RLS is working). But clicking **Export CSV** in either panel appears to do nothing, or downloads a blank/empty file with no error message.
+The toast says "Exported 4 rows" so the CSV is being generated correctly — but no file appears on disk. The Lovable preview runs your app inside a sandboxed iframe, and sandboxed iframes silently block the `<a download>` attribute used by `triggerDownload`. The click fires, the browser ignores it, no error is thrown.
 
-## Root causes
-
-1. **Silent empty downloads.** `downloadCSV` in `src/lib/csv.ts` handles the `rows.length === 0` case by creating an empty blob with no headers and triggering a download anyway. Result: a 0-byte file appears (or the browser silently discards it) and no toast tells the user why. This masks every other problem.
-
-2. **No success feedback.** Both export buttons in `src/pages/Admin.tsx` reset the busy flag but never confirm success, so even a working export looks like nothing happened if the browser saves the file silently.
-
-3. **Sessions export can produce 0 rows even when data exists.** `exportCSV` in `SessionsPanel` builds rows by iterating `round_events` and joining to `game_sessions`. If `round_events` returns empty (e.g. RLS edge case, network blip, or sessions with no rounds), the loop yields zero rows and the CSV is blank.
-
-4. **No diagnostic logging.** When something fails inside the export pipeline, errors are only surfaced via toast and the user sees nothing actionable.
+This applies equally to Sessions and Feedback exports (both go through the same `downloadCSV` helper).
 
 ## Plan
 
-### 1. `src/lib/csv.ts` — make empty exports explicit
-- Change `downloadCSV` to return a boolean (`true` if a non-empty file was written, `false` otherwise) instead of silently downloading a blank file.
-- When `rows.length === 0`, do NOT trigger a download; just return `false` so the caller can show a toast.
+### `src/lib/csv.ts` — make downloads work inside the preview iframe
 
-### 2. `src/pages/Admin.tsx` — `SessionsPanel.exportCSV`
-- Before iterating, check counts of `sess`, `rounds`, `profiles`. Log them with `console.info` for debugging.
-- If `rounds` is empty but `sess` is not, fall back to exporting **session-level rows only** (one row per session, no round columns) so admins still get a usable CSV.
-- After `downloadCSV`, branch on its return value: `toast.success("Exported N rows")` or `toast.warning("Nothing to export")`.
+Update `triggerDownload` to:
 
-### 3. `src/pages/Admin.tsx` — `FeedbackPanel.exportCSV`
-- Same treatment: log the row count, branch on the return value of `downloadCSV`, show `toast.success` or `toast.warning`.
-- Fix the column order so the CSV always includes `id` first.
+1. Detect whether the page is running inside an iframe (`window.self !== window.top`).
+2. When inside an iframe, set `a.target = '_blank'` so the click escapes the sandbox into a new tab where the browser will offer to save the file.
+3. As a belt-and-suspenders fallback, also call `window.open(url, '_blank')` so the file is surfaced even if the anchor click is suppressed.
+4. If `window.open` is blocked by a popup blocker, navigate the top frame to the blob URL as a last resort.
+5. Add a UTF-8 BOM (`\ufeff`) to the CSV so Excel opens it with correct encoding.
+6. Keep the blob URL alive for 60 s before revoking it (some browsers revoke too early when the navigation is into a new tab).
 
-### 4. Minor cleanup
-- Remove the React "Function components cannot be given refs" warnings in the console: hoist `SessionsPanel` and `FeedbackPanel` out of the `Admin` module body (they're already top-level — the warning is from `AppHeader` being passed a ref by Radix). Wrap `AppHeader` with `React.forwardRef` so it accepts the ref Radix Tabs is forwarding. (Cosmetic but stops the noise.)
+### `src/pages/Admin.tsx` — friendlier toast
+
+Change both export success toasts to mention the new tab so users know where to look:
+
+```
+toast.success(`Exported ${n} rows — opening in a new tab`);
+```
+
+Also add a one-time popup-blocked notice: if `window.open` returns null inside the iframe, show `toast.error("Your browser blocked the download popup. Allow popups for this site and try again, or open the app in a new tab.")` from `csv.ts` via a callback or returned status.
 
 ## Files to edit
 
-- `src/lib/csv.ts` — return boolean, skip empty downloads
-- `src/pages/Admin.tsx` — add success/empty toasts, session-only fallback for sessions export, console.info diagnostics
-- `src/components/AppHeader.tsx` — wrap in `React.forwardRef` to silence ref warning
+- `src/lib/csv.ts` — iframe-aware download with new-tab fallback and BOM
+- `src/pages/Admin.tsx` — clearer toast wording for both Sessions and Feedback exports
 
-## On the credits request
+## Note for the user
 
-I can't grant credits — that's handled by the Lovable team, not the AI agent. You can reach out via the in-app support chat or email **support@lovable.dev** with a description of what went wrong and they can review your account. I'm sorry for the back-and-forth getting here.
+After this change, if your browser asks whether to allow popups from the Lovable preview, allow them — that's the new tab carrying the CSV. Alternatively, opening your app in its own tab (the "Open in new tab" button at the top of the preview) makes downloads work normally with no popup involved.
