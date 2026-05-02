@@ -14,7 +14,7 @@ export const AppHeader = forwardRef<HTMLElement, Props>(function AppHeader({ tit
   const showAdmin = isAdmin || isWhitelistedAdmin(user);
 
   return (
-    <header className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-40">
+    <header ref={ref} className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-40">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3 gap-3">
         <Link to="/play" className="font-arcade text-primary text-sm md:text-base">{title}</Link>
         <nav className="flex items-center gap-2">
