@@ -101,11 +101,15 @@ export default function Admin() {
 
 function SessionsPanel() {
   const [sessions, setSessions] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     supabase.from('game_sessions').select('*').order('started_at', { ascending: false }).limit(500)
-      .then(({ data }) => setSessions(data ?? []));
+      .then(({ data, error }) => {
+        setLoadError(error?.message ?? null);
+        setSessions(data ?? []);
+      });
   }, []);
 
   const exportCSV = async () => {
@@ -114,7 +118,7 @@ function SessionsPanel() {
     const { data: rounds, error: e2 } = await supabase.from('round_events').select('*');
     const { data: profiles, error: e3 } = await supabase.from('profiles').select('id, nickname, age');
     setBusy(false);
-    if (e1 || e2 || e3) { toast.error('Export failed'); return; }
+    if (e1 || e2 || e3) { toast.error(e1?.message || e2?.message || e3?.message || 'Export failed'); return; }
     const profById = new Map(profiles!.map(p => [p.id, p]));
     const sessById = new Map(sess!.map(s => [s.id, s]));
     const rows = rounds!.map(r => {
@@ -139,6 +143,7 @@ function SessionsPanel() {
         <p className="text-sm text-muted-foreground">{sessions.length} sessions (latest 500 shown)</p>
         <Button onClick={exportCSV} disabled={busy}>{busy ? 'Exporting…' : 'Export CSV (all rounds)'}</Button>
       </div>
+      {loadError && <p className="text-sm text-destructive">Could not load sessions: {loadError}</p>}
       <div className="border border-border rounded-lg overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted">
@@ -163,11 +168,15 @@ function SessionsPanel() {
 
 function FeedbackPanel() {
   const [items, setItems] = useState<any[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = () => {
     supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(1000)
-      .then(({ data }) => setItems(data ?? []));
+      .then(({ data, error }) => {
+        setLoadError(error?.message ?? null);
+        setItems(data ?? []);
+      });
   };
   useEffect(load, []);
 
@@ -189,6 +198,7 @@ function FeedbackPanel() {
         <p className="text-sm text-muted-foreground">{items.length} feedback entries</p>
         <Button onClick={exportCSV} disabled={busy}>{busy ? 'Exporting…' : 'Export CSV'}</Button>
       </div>
+      {loadError && <p className="text-sm text-destructive">Could not load feedback: {loadError}</p>}
       <div className="border border-border rounded-lg overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted">
