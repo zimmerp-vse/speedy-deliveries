@@ -206,14 +206,23 @@ function FeedbackPanel() {
 
   const exportCSV = async () => {
     setBusy(true);
-    const { data, error } = await supabase.from('feedback').select('*').order('created_at');
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`,
-      (data ?? []).map(r => ({
-        created_at: r.created_at, nickname: r.nickname, email: r.email,
+    try {
+      const { data, error } = await supabase.from('feedback').select('*').order('created_at');
+      console.info('[CSV feedback export] rows=%d', data?.length ?? 0);
+      if (error) { toast.error(error.message); return; }
+      const rows = (data ?? []).map(r => ({
+        id: r.id, created_at: r.created_at, nickname: r.nickname, email: r.email,
         user_id: r.user_id, message: r.message,
-      })));
+      }));
+      const ok = downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`, rows);
+      if (ok) toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+      else toast.warning('No feedback to export yet.');
+    } catch (err: any) {
+      console.error('[CSV feedback export] failed', err);
+      toast.error(err?.message ?? 'Export failed');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
