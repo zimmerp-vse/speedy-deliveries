@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { isWhitelistedAdmin, useAuth, useProfile, signOut } from '@/lib/auth';
@@ -6,14 +7,14 @@ import { Shield, Gamepad2, LogOut } from 'lucide-react';
 
 interface Props { title?: string; }
 
-export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
+export const AppHeader = forwardRef<HTMLElement, Props>(function AppHeader({ title = 'Dash Delivery Lab' }, ref) {
   const { user } = useAuth();
   const { profile, isAdmin } = useProfile(user);
   const { pathname } = useLocation();
   const showAdmin = isAdmin || isWhitelistedAdmin(user);
 
   return (
-    <header className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-40">
+    <header ref={ref} className="border-b border-border bg-card/30 backdrop-blur sticky top-0 z-40">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3 gap-3">
         <Link to="/play" className="font-arcade text-primary text-sm md:text-base">{title}</Link>
         <nav className="flex items-center gap-2">
@@ -38,4 +39,4 @@ export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
       </div>
     </header>
   );
-}
+});

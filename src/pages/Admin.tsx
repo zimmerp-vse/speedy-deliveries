@@ -114,27 +114,51 @@ function SessionsPanel() {
 
   const exportCSV = async () => {
     setBusy(true);
-    const { data: sess, error: e1 } = await supabase.from('game_sessions').select('*').order('started_at');
-    const { data: rounds, error: e2 } = await supabase.from('round_events').select('*');
-    const { data: profiles, error: e3 } = await supabase.from('profiles').select('id, nickname, age');
-    setBusy(false);
-    if (e1 || e2 || e3) { toast.error(e1?.message || e2?.message || e3?.message || 'Export failed'); return; }
-    const profById = new Map(profiles!.map(p => [p.id, p]));
-    const sessById = new Map(sess!.map(s => [s.id, s]));
-    const rows = rounds!.map(r => {
-      const s = sessById.get(r.session_id); if (!s) return null;
-      const p = profById.get(s.user_id);
-      const params = (s.params || {}) as any;
-      const flat = { ...(params.difficulty || {}), ...(params.economy || {}) };
-      return {
-        session_id: s.id, user_id: s.user_id, nickname: p?.nickname, age: p?.age,
-        regime: s.regime, started_at: s.started_at, ended_at: s.ended_at, ended_reason: s.ended_reason,
-        ...flat,
-        round_number: r.round_number, outcome: r.outcome, time_ms: r.time_ms, scene: r.scene,
-        money_earned: r.money_earned, money_lost: r.money_lost, money_balance: r.money_balance,
+    try {
+      const { data: sess, error: e1 } = await supabase.from('game_sessions').select('*').order('started_at');
+      const { data: rounds, error: e2 } = await supabase.from('round_events').select('*');
+      const { data: profiles, error: e3 } = await supabase.from('profiles').select('id, nickname, age');
+      console.info('[CSV export] sessions=%d rounds=%d profiles=%d', sess?.length ?? 0, rounds?.length ?? 0, profiles?.length ?? 0);
+      if (e1 || e2 || e3) { toast.error(e1?.message || e2?.message || e3?.message || 'Export failed'); return; }
+      const profById = new Map((profiles ?? []).map(p => [p.id, p]));
+      const sessById = new Map((sess ?? []).map(s => [s.id, s]));
+
+      const buildSessionRow = (s: any) => {
+        const p = profById.get(s.user_id);
+        const params = (s.params || {}) as any;
+        const flat = { ...(params.difficulty || {}), ...(params.economy || {}) };
+        const totals = (s.totals || {}) as any;
+        return {
+          session_id: s.id, user_id: s.user_id, nickname: p?.nickname, age: p?.age,
+          regime: s.regime, started_at: s.started_at, ended_at: s.ended_at, ended_reason: s.ended_reason,
+          ...flat,
+          totals_deliveries: totals.deliveries, totals_money: totals.money,
+        };
       };
-    }).filter(Boolean) as any[];
-    downloadCSV(`dash-delivery-${new Date().toISOString().slice(0,10)}.csv`, rows);
+
+      let rows: any[] = [];
+      if ((rounds ?? []).length > 0) {
+        rows = rounds!.map(r => {
+          const s = sessById.get(r.session_id); if (!s) return null;
+          return {
+            ...buildSessionRow(s),
+            round_number: r.round_number, outcome: r.outcome, time_ms: r.time_ms, scene: r.scene,
+            money_earned: r.money_earned, money_lost: r.money_lost, money_balance: r.money_balance,
+          };
+        }).filter(Boolean) as any[];
+      } else {
+        rows = (sess ?? []).map(buildSessionRow);
+      }
+
+      const ok = downloadCSV(`dash-delivery-${new Date().toISOString().slice(0,10)}.csv`, rows);
+      if (ok) toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+      else toast.warning('Nothing to export yet — no sessions found.');
+    } catch (err: any) {
+      console.error('[CSV export] failed', err);
+      toast.error(err?.message ?? 'Export failed');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -182,14 +206,23 @@ function FeedbackPanel() {
 
   const exportCSV = async () => {
     setBusy(true);
-    const { data, error } = await supabase.from('feedback').select('*').order('created_at');
-    setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`,
-      (data ?? []).map(r => ({
-        created_at: r.created_at, nickname: r.nickname, email: r.email,
+    try {
+      const { data, error } = await supabase.from('feedback').select('*').order('created_at');
+      console.info('[CSV feedback export] rows=%d', data?.length ?? 0);
+      if (error) { toast.error(error.message); return; }
+      const rows = (data ?? []).map(r => ({
+        id: r.id, created_at: r.created_at, nickname: r.nickname, email: r.email,
         user_id: r.user_id, message: r.message,
-      })));
+      }));
+      const ok = downloadCSV(`dash-delivery-feedback-${new Date().toISOString().slice(0,10)}.csv`, rows);
+      if (ok) toast.success(`Exported ${rows.length} row${rows.length === 1 ? '' : 's'}`);
+      else toast.warning('No feedback to export yet.');
+    } catch (err: any) {
+      console.error('[CSV feedback export] failed', err);
+      toast.error(err?.message ?? 'Export failed');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
