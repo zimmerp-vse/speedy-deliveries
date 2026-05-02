@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { isWhitelistedAdmin, useAuth, useProfile, signOut } from '@/lib/auth';
@@ -6,7 +7,7 @@ import { Shield, Gamepad2, LogOut } from 'lucide-react';
 
 interface Props { title?: string; }
 
-export function AppHeader({ title = 'Dash Delivery Lab' }: Props) {
+export const AppHeader = forwardRef<HTMLElement, Props>(function AppHeader({ title = 'Dash Delivery Lab' }, ref) {
   const { user } = useAuth();
   const { profile, isAdmin } = useProfile(user);
   const { pathname } = useLocation();
