@@ -123,7 +123,7 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerP
             fontFamily="serif"
             letterSpacing="1"
           >
-            ROLEX
+            RELAX
           </text>
           <text
             x={cx}
