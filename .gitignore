@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Environment files (use .env.example as the committed template)
+.env
+.env.*.local
+
+# Lovable scratchpad — this project no longer uses Lovable
+.lovable/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
