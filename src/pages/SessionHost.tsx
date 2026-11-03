@@ -114,6 +114,12 @@ export default function SessionHost() {
             ended_at: new Date().toISOString(),
             ended_reason: p.endedReason,
             totals: p.totals,
+            // Device info was captured at session start (Play.tsx) and round-tripped through sessionStorage.
+            user_agent: currentSession.user_agent ?? null,
+            viewport_width: currentSession.viewport_width ?? null,
+            viewport_height: currentSession.viewport_height ?? null,
+            pointer_coarse: currentSession.pointer_coarse ?? null,
+            locale: currentSession.locale ?? null,
           }]).select('id').single();
           if (!createErr && created) {
             const rows = pendingRoundsRef.current.map(r => ({ session_id: created.id, ...r }));

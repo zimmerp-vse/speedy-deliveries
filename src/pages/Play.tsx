@@ -60,13 +60,32 @@ export default function Play() {
   const startSession = async (regime: RegimeKey, params: ResolvedParams) => {
     if (!user) { toast.error('Not signed in'); return; }
     const nickname = profile?.nickname || user.user_metadata?.nickname || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`;
+    // Capture device / viewport / pointer / locale at session start —
+    // small, defensive reads so an exotic browser missing one API doesn't
+    // block the session creation. See migration 20260508183500.
+    const deviceInfo = (() => {
+      try {
+        return {
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          viewport_width: typeof window !== 'undefined' ? window.innerWidth : null,
+          viewport_height: typeof window !== 'undefined' ? window.innerHeight : null,
+          pointer_coarse: typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(pointer: coarse)').matches
+            : null,
+          locale: typeof navigator !== 'undefined' ? navigator.language : null,
+        };
+      } catch {
+        return { user_agent: null, viewport_width: null, viewport_height: null, pointer_coarse: null, locale: null };
+      }
+    })();
     const { data, error } = await supabase.from('game_sessions').insert([{
       user_id: user.id, nickname, regime, params: params as any,
+      ...deviceInfo,
     }]).select('id').single();
     if (error) {
       if (isTransientDatabaseError(error)) {
         const localId = `local-${crypto.randomUUID()}`;
-        sessionStorage.setItem(`local-session:${localId}`, JSON.stringify({ id: localId, user_id: user.id, nickname, regime, params }));
+        sessionStorage.setItem(`local-session:${localId}`, JSON.stringify({ id: localId, user_id: user.id, nickname, regime, params, ...deviceInfo }));
         toast.warning('Backend is reconnecting. Your game will start now and save results if the connection recovers.');
         nav(`/session/${localId}`);
         return;

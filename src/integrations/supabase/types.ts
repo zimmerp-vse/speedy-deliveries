@@ -67,34 +67,49 @@ export type Database = {
           ended_at: string | null
           ended_reason: string | null
           id: string
+          locale: string | null
           nickname: string
           params: Json
+          pointer_coarse: boolean | null
           regime: string
           started_at: string
           totals: Json | null
+          user_agent: string | null
           user_id: string
+          viewport_height: number | null
+          viewport_width: number | null
         }
         Insert: {
           ended_at?: string | null
           ended_reason?: string | null
           id?: string
+          locale?: string | null
           nickname: string
           params: Json
+          pointer_coarse?: boolean | null
           regime: string
           started_at?: string
           totals?: Json | null
+          user_agent?: string | null
           user_id: string
+          viewport_height?: number | null
+          viewport_width?: number | null
         }
         Update: {
           ended_at?: string | null
           ended_reason?: string | null
           id?: string
+          locale?: string | null
           nickname?: string
           params?: Json
+          pointer_coarse?: boolean | null
           regime?: string
           started_at?: string
           totals?: Json | null
+          user_agent?: string | null
           user_id?: string
+          viewport_height?: number | null
+          viewport_width?: number | null
         }
         Relationships: []
       }
