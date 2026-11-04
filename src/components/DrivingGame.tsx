@@ -57,15 +57,25 @@ export function DrivingGame() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Size the drawing buffer to the canvas's displayed size. The canvas is observed
+    // directly: inside an iframe (notably Safari) the first measurement can come before
+    // layout, and a later size change does not always fire a window 'resize'.
+    let applied = '';
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      canvas.width = Math.floor(canvas.clientWidth * dpr);
-      canvas.height = Math.floor(canvas.clientHeight * dpr);
+      const w = Math.floor(canvas.clientWidth * dpr);
+      const h = Math.floor(canvas.clientHeight * dpr);
+      if (w === 0 || h === 0 || applied === `${w}x${h}x${dpr}`) return;
+      applied = `${w}x${h}x${dpr}`;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext('2d');
       if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : null;
+    resizeObserver?.observe(canvas);
     // Make sure this iframe window grabs keyboard focus so arrow keys work without an extra click.
     try { window.focus(); } catch {}
     const grab = () => { try { window.focus(); } catch {} };
@@ -146,6 +156,7 @@ export function DrivingGame() {
 
     return () => {
       window.removeEventListener('resize', resize);
+      resizeObserver?.disconnect();
       window.removeEventListener('pointerdown', grab);
       off();
       embedHost.stop();
