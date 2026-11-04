@@ -81,6 +81,12 @@ describe('applyInitConfig with and without a schedule', () => {
     expect(r.scheduleLength).toBe(3);
   });
 
+  it('deliveryDistance: default unchanged, override clamped', () => {
+    expect(applyInitConfig({}).deliveryDistance).toBe(300);
+    expect(applyInitConfig({ difficulty: { deliveryDistance: 200 } }).deliveryDistance).toBe(200);
+    expect(applyInitConfig({ difficulty: { deliveryDistance: 5 } }).deliveryDistance).toBe(50);
+  });
+
   it('with a schedule and an explicit totalRounds: totalRounds wins', () => {
     const r = applyInitConfig({ difficulty: { totalRounds: 80, schedule: [{}, {}] } });
     expect(r.totalRounds).toBe(80);

@@ -93,6 +93,7 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     maxSpeed?: number,                    // default 120
     acceleration?: number,                // default 18
     braking?: number,                     // default 80
+    deliveryDistance?: number,            // road segments per delivery, default 300 (50..2000)
     schedule?: Array<{                    // optional per-round conditions, see below
       tripDurationMs?: number,
       carSpawnRate?: number,

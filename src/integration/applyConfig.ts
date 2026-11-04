@@ -14,6 +14,7 @@ export interface ResolvedConfig {
   maxSpeed: number;
   acceleration: number;
   braking: number;
+  deliveryDistance: number;
   malfunctionProbability: number;
   malfunctionFirstWindowMinSec: number;
   malfunctionFirstWindowMaxSec: number;
@@ -65,6 +66,9 @@ export function applyInitConfig(init: InitPayload | undefined): ResolvedConfig {
   if (typeof d.maxSpeed === 'number') GAME_CONFIG.maxSpeed = num(d.maxSpeed, GAME_CONFIG.maxSpeed, 10, 500);
   if (typeof d.acceleration === 'number') GAME_CONFIG.acceleration = num(d.acceleration, GAME_CONFIG.acceleration, 1, 500);
   if (typeof d.braking === 'number') GAME_CONFIG.braking = num(d.braking, GAME_CONFIG.braking, 1, 500);
+  if (typeof d.deliveryDistance === 'number') {
+    GAME_CONFIG.deliveryDistance = Math.round(num(d.deliveryDistance, GAME_CONFIG.deliveryDistance, 50, 2000));
+  }
 
   if (typeof e.startingMoney === 'number') GAME_CONFIG.startingMoney = num(e.startingMoney, GAME_CONFIG.startingMoney, 0);
   if (typeof e.deliveryReward === 'number') GAME_CONFIG.deliveryReward = num(e.deliveryReward, GAME_CONFIG.deliveryReward, 0);
@@ -84,6 +88,7 @@ export function applyInitConfig(init: InitPayload | undefined): ResolvedConfig {
     maxSpeed: GAME_CONFIG.maxSpeed,
     acceleration: GAME_CONFIG.acceleration,
     braking: GAME_CONFIG.braking,
+    deliveryDistance: GAME_CONFIG.deliveryDistance,
     malfunctionProbability: num(d.malfunctionProbability, 0.25, 0, 1),
     malfunctionFirstWindowMinSec: num(d.malfunctionFirstWindowSec?.min, 8, 0, 600),
     malfunctionFirstWindowMaxSec: num(d.malfunctionFirstWindowSec?.max, 22, 0, 600),
