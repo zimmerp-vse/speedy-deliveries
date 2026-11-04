@@ -7,7 +7,7 @@ import { RoundEndScreen } from './RoundEndScreen';
 import { GameOverScreen } from './GameOverScreen';
 import { StartScreen } from './StartScreen';
 import { embedHost } from '@/integration/host';
-import { applyInitConfig } from '@/integration/applyConfig';
+import { applyInitConfig, getInitSchedule, snapshotBaseConditions } from '@/integration/applyConfig';
 import type { InitPayload, RoundEvent, GameSummary } from '@/integration/protocol';
 
 type GamePhase = 'start' | 'playing' | 'round-end' | 'game-over';
@@ -30,6 +30,7 @@ export function DrivingGame() {
   const [celebrating, setCelebrating] = useState(false);
   const [playerNickname, setPlayerNickname] = useState<string | undefined>(undefined);
   const [showQuitButton, setShowQuitButton] = useState(false);
+  const [showRoundTotal, setShowRoundTotal] = useState(true);
 
   const buildSummary = useCallback((data: GameData, endedReason: 'completed' | 'quit'): GameSummary => {
     const accidents = {
@@ -77,8 +78,8 @@ export function DrivingGame() {
     engine.onMoneyUpdate = setMoney;
     engine.onTimeUpdate = setTimeRemaining;
     engine.onCelebrationChange = setCelebrating;
-    engine.onRoundStart = ({ round, scene, deliveryType }) => {
-      embedHost.sendRoundStart(round, scene, deliveryType, sessionIdRef.current);
+    engine.onRoundStart = ({ round, scene, deliveryType, applied }) => {
+      embedHost.sendRoundStart(round, scene, deliveryType, sessionIdRef.current, applied);
     };
     engine.onRoundEnd = (result, data) => {
       setCelebrating(false);
@@ -94,17 +95,18 @@ export function DrivingGame() {
         moneyEarned: result.moneyEarned,
         moneyLost: result.moneyLost,
         moneyBalance: data.totalMoney,
+        applied: result.applied,
       };
       roundsRef.current.push(event);
       embedHost.sendRoundEnd(event, sessionIdRef.current);
     };
-    engine.onGameEnd = (data) => {
+    engine.onGameEnd = (data, reason) => {
       setCelebrating(false);
       setGameData({ ...data });
       setPhase('game-over');
       if (!endedRef.current) {
         endedRef.current = true;
-        embedHost.sendGameEnd(buildSummary(data, 'completed'));
+        embedHost.sendGameEnd(buildSummary(data, reason));
       }
     };
 
@@ -116,6 +118,9 @@ export function DrivingGame() {
         initRef.current = msg.payload;
         sessionIdRef.current = msg.payload.session?.sessionId;
         const applied = applyInitConfig(msg.payload);
+        // Base values are snapshotted after the INIT overrides; schedule entries go on top.
+        engineRef.current?.setSchedule(getInitSchedule(msg.payload), snapshotBaseConditions());
+        setShowRoundTotal(msg.payload.ui?.showRoundTotal !== false);
         setPlayerNickname(msg.payload.player?.nickname);
         setShowQuitButton(!!msg.payload.ui?.showQuitButton);
         setMoney(GAME_CONFIG.startingMoney);
@@ -236,6 +241,7 @@ export function DrivingGame() {
             money={money}
             round={currentRound}
             totalRounds={GAME_CONFIG.totalRounds}
+            showRoundTotal={showRoundTotal}
             timeRemaining={timeRemaining}
           />
           {showQuitButton && (

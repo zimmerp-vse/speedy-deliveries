@@ -1,6 +1,8 @@
 import { GAME_CONFIG, AccidentType, RoundResult, GameData } from './config';
 import { GameState, CelebrationParticle, SmokeParticle, createSegments, spawnObstacles, render } from './renderer';
 import { sounds } from './sounds';
+import type { AppliedConditions, ScheduleEntry } from '@/integration/protocol';
+import { resolveRoundConditions, type BaseConditions } from '@/integration/schedule';
 
 export type RoundOutcomeKind =
   | 'delivered'
@@ -12,7 +14,11 @@ export type RoundOutcomeKind =
 
 export interface RichRoundResult extends RoundResult {
   outcome: RoundOutcomeKind;
+  /** Conditions in force for this round. */
+  applied: AppliedConditions;
 }
+
+export type GameEndReason = 'completed' | 'quit';
 
 export interface Controls {
   left: boolean;
@@ -49,12 +55,23 @@ export class GameEngine {
   private roundStartTime: number = 0;
   
   public onRoundEnd?: (result: RichRoundResult, gameData: GameData) => void;
-  public onGameEnd?: (gameData: GameData) => void;
+  public onGameEnd?: (gameData: GameData, reason: GameEndReason) => void;
   public onSpeedUpdate?: (speed: number) => void;
   public onMoneyUpdate?: (money: number) => void;
   public onTimeUpdate?: (time: number) => void;
   public onCelebrationChange?: (active: boolean) => void;
-  public onRoundStart?: (info: { round: number; scene: string; deliveryType: string }) => void;
+  public onRoundStart?: (info: { round: number; scene: string; deliveryType: string; applied: AppliedConditions }) => void;
+
+  // Optional per-round schedule (set from INIT). Without it the game behaves as it always did.
+  private schedule?: ScheduleEntry[];
+  private baseConditions?: BaseConditions;
+  private currentApplied: AppliedConditions = {
+    tripDurationMs: GAME_CONFIG.tripDurationMs,
+    carSpawnRate: GAME_CONFIG.carSpawnRate,
+    obstacleSpawnRate: GAME_CONFIG.obstacleSpawnRate,
+    pedestrianSpawnRate: GAME_CONFIG.pedestrianSpawnRate,
+    sceneIndex: 0,
+  };
 
   // Tracks the in-flight outcome so endRound can map it for the host bridge.
   private pendingOutcome: RoundOutcomeKind | null = null;
@@ -109,6 +126,24 @@ export class GameEngine {
   isCelebrating(): boolean { return this.state.celebrating; }
   isCrashScene(): boolean { return this.state.isAccident && this.state.crashTimer > 0 && !this.state.crashSkipped; }
 
+  /**
+   * Set (or clear) the per-round schedule. `base` holds the values that schedule
+   * entries are applied on top of. Clearing restores the base values.
+   */
+  setSchedule(schedule: ScheduleEntry[] | undefined, base: BaseConditions) {
+    this.schedule = schedule && schedule.length > 0 ? schedule : undefined;
+    this.baseConditions = base;
+    if (!this.schedule) this.applyConditions({ ...base, sceneIndex: 0 });
+  }
+
+  // Spawn rates and trip time live on the shared GAME_CONFIG read by renderer and engine.
+  private applyConditions(c: AppliedConditions) {
+    GAME_CONFIG.tripDurationMs = c.tripDurationMs;
+    GAME_CONFIG.carSpawnRate = c.carSpawnRate;
+    GAME_CONFIG.obstacleSpawnRate = c.obstacleSpawnRate;
+    GAME_CONFIG.pedestrianSpawnRate = c.pedestrianSpawnRate;
+  }
+
   startRound() {
     // Clear any pending state from previous round
     if (this.crashTimeout) { clearTimeout(this.crashTimeout); this.crashTimeout = null; }
@@ -118,7 +153,21 @@ export class GameEngine {
     this.running = false;
 
     this.currentRound++;
-    this.state = this.createInitialState(this.currentRound - 1);
+    const sceneCount = GAME_CONFIG.scenes.length;
+    if (this.schedule && this.baseConditions) {
+      this.currentApplied = resolveRoundConditions(this.baseConditions, this.schedule, this.currentRound, sceneCount);
+      this.applyConditions(this.currentApplied);
+    } else {
+      // No schedule: nothing is changed, the scene rotates by round number as before.
+      this.currentApplied = {
+        tripDurationMs: GAME_CONFIG.tripDurationMs,
+        carSpawnRate: GAME_CONFIG.carSpawnRate,
+        obstacleSpawnRate: GAME_CONFIG.obstacleSpawnRate,
+        pedestrianSpawnRate: GAME_CONFIG.pedestrianSpawnRate,
+        sceneIndex: (this.currentRound - 1) % sceneCount,
+      };
+    }
+    this.state = this.createInitialState(this.currentApplied.sceneIndex);
     this.onCelebrationChange?.(false);
     this.roundStartTime = performance.now();
     this.cruiseEnabled = false;
@@ -137,6 +186,7 @@ export class GameEngine {
       round: this.currentRound,
       scene: this.state.scene.name,
       deliveryType: this.state.deliveryType.label,
+      applied: { ...this.currentApplied },
     });
     sounds.ensureContext();
     sounds.startEngine();
@@ -158,7 +208,7 @@ export class GameEngine {
     sounds.stopEngine();
     this.pendingCelebrationResult = null;
     this.pendingCrashResult = null;
-    this.onGameEnd?.({ ...this.gameData });
+    this.onGameEnd?.({ ...this.gameData }, 'quit');
   }
 
   setControls(controls: Partial<Controls>) {
@@ -574,12 +624,7 @@ export class GameEngine {
     this.running = false;
 
     if (!result) return;
-
-    if (this.currentRound >= GAME_CONFIG.totalRounds) {
-      this.onGameEnd?.({ ...this.gameData });
-    } else {
-      this.onRoundEnd?.(result, { ...this.gameData });
-    }
+    this.reportRoundResult(result);
   }
 
   private finishCrash() {
@@ -588,11 +633,15 @@ export class GameEngine {
     this.running = false;
 
     if (!result) return;
+    this.reportRoundResult(result);
+  }
 
+  // Every finished round is reported with onRoundEnd, the last one too;
+  // after the last round, onGameEnd follows.
+  private reportRoundResult(result: RichRoundResult) {
+    this.onRoundEnd?.(result, { ...this.gameData });
     if (this.currentRound >= GAME_CONFIG.totalRounds) {
-      this.onGameEnd?.({ ...this.gameData });
-    } else {
-      this.onRoundEnd?.(result, { ...this.gameData });
+      this.onGameEnd?.({ ...this.gameData }, 'completed');
     }
   }
 
@@ -624,7 +673,7 @@ export class GameEngine {
     const result: RichRoundResult = {
       round: this.currentRound, success, accidentType,
       moneyEarned, moneyLost, scene: this.state.scene.name, timeMs,
-      outcome,
+      outcome, applied: { ...this.currentApplied },
     };
     this.gameData.rounds.push(result);
 

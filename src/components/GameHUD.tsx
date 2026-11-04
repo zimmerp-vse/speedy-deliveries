@@ -9,6 +9,8 @@ interface GameHUDProps {
   money: number;
   round: number;
   totalRounds: number;
+  /** Show "/total" next to the round number. Default true. */
+  showRoundTotal?: boolean;
   timeRemaining: number;
   totalTime?: number;
 }
@@ -74,6 +76,7 @@ export function GameHUD({
   money,
   round,
   totalRounds,
+  showRoundTotal = true,
   timeRemaining,
   totalTime = 45,
 }: GameHUDProps) {
@@ -102,6 +105,7 @@ export function GameHUD({
         <div className="flex flex-col gap-1.5 sm:gap-2 items-center pt-1">
           <LuxePlaque label="ROUND">
             {round}
+            {showRoundTotal && (
             <span
               className="text-xs"
               style={{
@@ -114,6 +118,7 @@ export function GameHUD({
             >
               /{totalRounds}
             </span>
+            )}
           </LuxePlaque>
           <LuxePlaque label="CASH">${money.toLocaleString()}</LuxePlaque>
         </div>
