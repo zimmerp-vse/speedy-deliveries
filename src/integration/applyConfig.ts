@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from '@/game/config';
-import type { InitPayload } from './protocol';
+import type { InitPayload, ScheduleEntry } from './protocol';
+import { sanitizeSchedule, type BaseConditions } from './schedule';
 
 export interface ResolvedConfig {
   totalRounds: number;
@@ -16,6 +17,23 @@ export interface ResolvedConfig {
   malfunctionProbability: number;
   malfunctionFirstWindowMinSec: number;
   malfunctionFirstWindowMaxSec: number;
+  /** Present only when INIT carried a usable schedule. */
+  scheduleLength?: number;
+}
+
+/** The INIT schedule, validated against the game's scene list; undefined if none was sent. */
+export function getInitSchedule(init: InitPayload | undefined): ScheduleEntry[] | undefined {
+  return sanitizeSchedule(init?.difficulty?.schedule, GAME_CONFIG.scenes.length);
+}
+
+/** Current base values on GAME_CONFIG, which schedule entries are applied on top of. */
+export function snapshotBaseConditions(): BaseConditions {
+  return {
+    tripDurationMs: GAME_CONFIG.tripDurationMs,
+    carSpawnRate: GAME_CONFIG.carSpawnRate,
+    obstacleSpawnRate: GAME_CONFIG.obstacleSpawnRate,
+    pedestrianSpawnRate: GAME_CONFIG.pedestrianSpawnRate,
+  };
 }
 
 const num = (v: unknown, fallback: number, min = -Infinity, max = Infinity): number => {
@@ -40,6 +58,9 @@ export function applyInitConfig(init: InitPayload | undefined): ResolvedConfig {
   // Also mirror onto GAME_CONFIG so the engine (which still reads from it for
   // many timing values) sees the overrides.
   if (typeof d.totalRounds === 'number') GAME_CONFIG.totalRounds = num(d.totalRounds, GAME_CONFIG.totalRounds, 1, 100);
+  // With a schedule and no explicit totalRounds, play exactly the scheduled rounds.
+  const schedule = getInitSchedule(init);
+  if (schedule && typeof d.totalRounds !== 'number') GAME_CONFIG.totalRounds = schedule.length;
   if (typeof d.tripDurationMs === 'number') GAME_CONFIG.tripDurationMs = num(d.tripDurationMs, GAME_CONFIG.tripDurationMs, 5000, 600000);
   if (typeof d.maxSpeed === 'number') GAME_CONFIG.maxSpeed = num(d.maxSpeed, GAME_CONFIG.maxSpeed, 10, 500);
   if (typeof d.acceleration === 'number') GAME_CONFIG.acceleration = num(d.acceleration, GAME_CONFIG.acceleration, 1, 500);
@@ -67,6 +88,7 @@ export function applyInitConfig(init: InitPayload | undefined): ResolvedConfig {
     malfunctionFirstWindowMinSec: num(d.malfunctionFirstWindowSec?.min, 8, 0, 600),
     malfunctionFirstWindowMaxSec: num(d.malfunctionFirstWindowSec?.max, 22, 0, 600),
   };
+  if (schedule) resolved.scheduleLength = schedule.length;
 
   // Stash on GAME_CONFIG for engine access (added as ad-hoc fields).
   (GAME_CONFIG as any).malfunctionProbability = resolved.malfunctionProbability;

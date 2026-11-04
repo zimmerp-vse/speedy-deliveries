@@ -9,6 +9,7 @@ import {
   type OutboundMessage,
   type RoundEvent,
   type GameSummary,
+  type AppliedConditions,
 } from './protocol';
 
 type Listener = (msg: InboundMessage) => void;
@@ -115,12 +116,12 @@ export class EmbedHost {
     });
   }
 
-  sendRoundStart(round: number, scene: string, deliveryType: string, sessionId?: string) {
+  sendRoundStart(round: number, scene: string, deliveryType: string, sessionId?: string, applied?: AppliedConditions) {
     this.send({
       source: MESSAGE_SOURCE,
       type: 'ROUND_START',
       version: PROTOCOL_VERSION,
-      payload: { sessionId, round, scene, deliveryType, startedAt: Date.now() },
+      payload: { sessionId, round, scene, deliveryType, startedAt: Date.now(), applied },
     });
   }
 

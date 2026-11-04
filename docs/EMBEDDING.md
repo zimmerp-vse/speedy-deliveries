@@ -93,6 +93,13 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     maxSpeed?: number,                    // default 120
     acceleration?: number,                // default 18
     braking?: number,                     // default 80
+    schedule?: Array<{                    // optional per-round conditions, see below
+      tripDurationMs?: number,
+      carSpawnRate?: number,
+      obstacleSpawnRate?: number,
+      pedestrianSpawnRate?: number,
+      sceneIndex?: number,                // 0-based index into the 10 scenes
+    }>,
   },
   economy?: {
     startingMoney?: number,
@@ -102,10 +109,36 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     pedestrianCollisionCost?: number,
     malfunctionCost?: number,
   },
-  ui?: { showHud?: boolean, showQuitButton?: boolean, locale?: string },
+  ui?: {
+    showHud?: boolean,
+    showQuitButton?: boolean,
+    locale?: string,
+    autoStart?: boolean,                  // start round 1 right after INIT, skipping the start screen
+    showRoundTotal?: boolean,             // default true; false shows "ROUND 3" instead of "ROUND 3/10"
+  },
   extra?: Record<string, unknown>, // forward-compat slot, echoed back on GAME_END
 }
 ```
+
+### Per-round schedule (optional)
+
+`difficulty.schedule` sets the conditions of each round. Entry `i` (0-based) is applied at the
+start of round `i + 1`, on top of the base difficulty (the other `difficulty` fields, or the
+defaults). Rules:
+
+- A field left out of an entry falls back to the **base** value, not to the previous round's value.
+- `sceneIndex` picks the scene (0 to 9). Without it the scene rotates by round number, as always:
+  round `r` gets scene `(r - 1) mod 10`.
+- Values are clamped like the base values (trip 5 000 to 600 000 ms, rates 0 to 1); a scene index
+  out of range or a non-number is ignored. At most 100 entries are read.
+- With a schedule and no `totalRounds`, `totalRounds` is the schedule's length. With both,
+  `totalRounds` wins; rounds beyond the schedule use the base values.
+- Without a schedule (or with an empty one) the game behaves exactly as before.
+- Send one `INIT` per iframe load. To start over with a new schedule, reload the iframe.
+
+`ROUND_START` and `ROUND_END` carry `applied`, the conditions actually in force for that round,
+with or without a schedule. When `INIT` carried a schedule, `INIT_ACK.appliedConfig` also has
+`scheduleLength`.
 
 ### Minigame → master
 
@@ -113,10 +146,41 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
 |----------------|-------------------------------------------------------------------------|
 | `READY`        | `{ protocolVersion }`                                                   |
 | `INIT_ACK`     | `{ appliedConfig, sessionId }`                                          |
-| `ROUND_START`  | `{ sessionId, round, scene, deliveryType, startedAt }`                  |
-| `ROUND_END`    | `{ sessionId, round, outcome, timeMs, scene, moneyEarned, moneyLost, moneyBalance }` |
+| `ROUND_START`  | `{ sessionId, round, scene, deliveryType, startedAt, applied }`         |
+| `ROUND_END`    | `{ sessionId, round, outcome, timeMs, scene, moneyEarned, moneyLost, moneyBalance, applied }` |
 | `GAME_END`     | `GameSummary` (see below)                                               |
 | `ERROR`        | `{ code, message }`                                                     |
+
+`applied` is `{ tripDurationMs, carSpawnRate, obstacleSpawnRate, pedestrianSpawnRate, sceneIndex }`.
+`startedAt` is the player's clock (`Date.now()`); a host that needs reliable timing should use
+its own server time.
+
+Every finished round sends `ROUND_END`, the last one included; after the last round, `GAME_END`
+follows. (Before 2026-11 the last round sent only `GAME_END` and was missing from its `rounds`.)
+
+### Round lifecycle and `QUIT`
+
+1. `ROUND_START` when the car starts.
+2. The round ends with an outcome. A delivery plays a short celebration (Space skips it); a crash,
+   timeout or malfunction plays a crash scene that ends by itself after 4 s (Space skips it).
+3. Then `ROUND_END` is sent and a result screen shows the outcome, the money won or lost, the scene
+   and the time, with a **NEXT DELIVERY** button. It does not move on by itself; the next round
+   (and its `ROUND_START`) begins only when the player clicks. A host that measures time should
+   expect this idle time between rounds.
+4. After the last round: `ROUND_END`, then `GAME_END` with `endedReason: 'completed'` and the
+   game-over screen.
+
+`QUIT` ends the game at once and sends `GAME_END` with `endedReason: 'quit'`:
+
+- **Between rounds** (result screen): clean; every finished round has had its `ROUND_END`.
+- **During a round**: the round in progress is dropped. It had a `ROUND_START` but gets no
+  `ROUND_END` and is not in `GAME_END.rounds`.
+- **During the celebration or crash scene**: the outcome is already decided but its `ROUND_END`
+  has not been sent yet, so this round is dropped too. To keep it, send `QUIT` only after the
+  round's `ROUND_END`.
+
+After `QUIT` the iframe shows the game-over screen (cash, deliveries out of `totalRounds`,
+accidents). A host that does not want players to see it should hide the iframe.
 
 ### `outcome` values
 

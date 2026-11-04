@@ -12,6 +12,31 @@ export type RoundOutcome =
   | 'malfunction'
   | 'timeout';
 
+// ---- Per-round conditions ----
+
+/**
+ * One entry of the optional per-round schedule. Entry i (0-based) is applied
+ * at the start of round i + 1, on top of the base difficulty. A field left out
+ * falls back to the base value (never to the previous round's value).
+ */
+export interface ScheduleEntry {
+  tripDurationMs?: number;
+  carSpawnRate?: number;
+  obstacleSpawnRate?: number;
+  pedestrianSpawnRate?: number;
+  /** 0-based index into the game's scene list. Default: (round - 1) mod scene count. */
+  sceneIndex?: number;
+}
+
+/** The conditions actually in force for a round, echoed in ROUND_START and ROUND_END. */
+export interface AppliedConditions {
+  tripDurationMs: number;
+  carSpawnRate: number;
+  obstacleSpawnRate: number;
+  pedestrianSpawnRate: number;
+  sceneIndex: number;
+}
+
 // ---- Inbound (master → minigame) ----
 
 export interface InitPayload {
@@ -32,6 +57,11 @@ export interface InitPayload {
     maxSpeed?: number;
     acceleration?: number;
     braking?: number;
+    /**
+     * Optional per-round conditions. With a schedule, totalRounds defaults to
+     * the schedule's length; rounds beyond the schedule use the base values.
+     */
+    schedule?: ScheduleEntry[];
   };
   economy?: {
     startingMoney?: number;
@@ -46,6 +76,8 @@ export interface InitPayload {
     showQuitButton?: boolean;
     locale?: string;
     autoStart?: boolean;
+    /** Show "/total" next to the round number in the HUD. Default true. */
+    showRoundTotal?: boolean;
   };
   // Forward-compat slot — preserved and echoed back on GAME_END.
   extra?: Record<string, unknown>;
@@ -67,6 +99,7 @@ export interface RoundEvent {
   moneyEarned: number;
   moneyLost: number;
   moneyBalance: number;
+  applied?: AppliedConditions;
 }
 
 export interface GameSummary {
@@ -91,7 +124,7 @@ export interface GameSummary {
 export type OutboundMessage =
   | { source: typeof MESSAGE_SOURCE; type: 'READY'; version: number; payload: { protocolVersion: number } }
   | { source: typeof MESSAGE_SOURCE; type: 'INIT_ACK'; version: number; payload: { appliedConfig: Record<string, unknown>; sessionId?: string } }
-  | { source: typeof MESSAGE_SOURCE; type: 'ROUND_START'; version: number; payload: { sessionId?: string; round: number; scene: string; deliveryType: string; startedAt: number } }
+  | { source: typeof MESSAGE_SOURCE; type: 'ROUND_START'; version: number; payload: { sessionId?: string; round: number; scene: string; deliveryType: string; startedAt: number; applied?: AppliedConditions } }
   | { source: typeof MESSAGE_SOURCE; type: 'ROUND_END'; version: number; payload: { sessionId?: string } & RoundEvent }
   | { source: typeof MESSAGE_SOURCE; type: 'GAME_END'; version: number; payload: GameSummary }
   | { source: typeof MESSAGE_SOURCE; type: 'ERROR'; version: number; payload: { code: string; message: string } };
