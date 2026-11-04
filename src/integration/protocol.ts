@@ -57,6 +57,8 @@ export interface InitPayload {
     maxSpeed?: number;
     acceleration?: number;
     braking?: number;
+    /** Road length of one delivery, in road segments. Default 300; shorter means shorter rounds. */
+    deliveryDistance?: number;
     /**
      * Optional per-round conditions. With a schedule, totalRounds defaults to
      * the schedule's length; rounds beyond the schedule use the base values.
