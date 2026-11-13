@@ -31,12 +31,14 @@ export function GameControls({ onControl }: GameControlsProps) {
         </button>
       </div>
       
-      {/* Horn */}
+      {/* Horn: labelled like the pedals, so it does not look like a sound switch */}
       <button
         {...bind('horn')}
-        className="w-14 h-14 rounded-full bg-sunset-mid/70 backdrop-blur-sm border border-border flex items-center justify-center text-xl active:bg-primary/30 transition-colors mb-1"
+        aria-label="Horn"
+        className="w-16 h-16 rounded-full bg-amber-400/80 backdrop-blur-sm border-2 border-amber-200 flex flex-col items-center justify-center font-arcade text-[10px] text-slate-900 shadow-lg active:bg-amber-300 transition-colors mb-1"
       >
-        📢
+        <span className="text-lg leading-none">🚗</span>
+        HONK
       </button>
       
       {/* Pedals */}

@@ -36,7 +36,7 @@ export function StartScreen({ onStart, nickname }: StartScreenProps) {
             <span>⬆ / W</span><span>Accelerate</span>
             <span>⬇ / S</span><span>Brake</span>
             <span>⬅ ➡ / A D</span><span>Steer</span>
-            <span>Space / H</span><span>Horn 📢</span>
+            <span>Space / H</span><span>Horn (HONK)</span>
           </div>
           <p className="font-arcade text-[8px] text-accent mt-2">
             💡 Horn scares pedestrians away!

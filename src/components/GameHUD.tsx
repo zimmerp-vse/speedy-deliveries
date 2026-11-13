@@ -170,7 +170,9 @@ function MuteButton() {
         sounds.setMuted(next);
         setMuted(next);
       }}
-      className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-foreground/80 backdrop-blur-sm transition hover:text-foreground"
+      // Phones and tablets: top left under the speedometer, away from the touch buttons at the
+      // bottom. Computers: bottom right.
+      className="absolute left-3 top-[128px] sm:top-[208px] md:left-auto md:top-auto md:bottom-3 md:right-3 z-20 flex h-9 w-9 items-center justify-center rounded-full border text-foreground/80 backdrop-blur-sm transition hover:text-foreground"
       style={{
         background: 'linear-gradient(145deg, #0a0604 0%, #1a1208 45%, #0a0604 100%)',
         borderColor: '#8a6418',
