@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 interface RolexTimerProps {
   timeRemaining: number;
   totalTime: number;
@@ -264,28 +266,48 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200, ring = false 
   );
 }
 
-/** The share of time left as a ring on the bezel, starting at 12 o'clock and shrinking anticlockwise. */
+/**
+ * The share of time left as a ring on the bezel, starting at 12 o'clock and shrinking
+ * anticlockwise. Bright gold with a glint of sunlight sweeping round it and a pulsing glow, so it
+ * stands out against the dark part of the bezel; red when less than 15 % is left.
+ */
 function TimeRing({ left, size }: { left: number; size: number }) {
+  const id = useId().replace(/:/g, '');
   const share = Math.max(0, Math.min(1, left));
   const width = Math.max(4, size * 0.07);
-  const r = size / 2 - width / 2;
+  const c = size / 2;
+  const r = c - width / 2;
   const circumference = 2 * Math.PI * r;
-  const color = share < 0.15 ? '#ef4444' : share < 0.3 ? '#f59e0b' : '#22c55e';
+  const low = share < 0.15;
   return (
     <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full" aria-hidden>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={width} />
+      <defs>
+        {/* A bright band in a gold gradient; turning the gradient sweeps the glint round the ring. */}
+        <linearGradient id={`gold${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={size} y2={size}>
+          <stop offset="0" stopColor="#a8740a" />
+          <stop offset="0.38" stopColor="#f5c518" />
+          <stop offset="0.5" stopColor="#fffbe8" />
+          <stop offset="0.62" stopColor="#f5c518" />
+          <stop offset="1" stopColor="#a8740a" />
+          <animateTransform attributeName="gradientTransform" type="rotate"
+            from={`0 ${c} ${c}`} to={`360 ${c} ${c}`} dur="2.4s" repeatCount="indefinite" />
+        </linearGradient>
+      </defs>
+      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={width} />
       <circle
-        cx={size / 2}
-        cy={size / 2}
+        cx={c}
+        cy={c}
         r={r}
         fill="none"
-        stroke={color}
+        stroke={low ? '#ef4444' : `url(#gold${id})`}
         strokeWidth={width}
         strokeLinecap="butt"
         strokeDasharray={`${share * circumference} ${circumference}`}
-        transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        style={{ filter: `drop-shadow(0 0 ${width / 2}px ${color})` }}
-      />
+        transform={`rotate(-90 ${c} ${c})`}
+        style={{ filter: `drop-shadow(0 0 ${width * 0.8}px ${low ? '#ef4444' : '#ffd54a'})` }}
+      >
+        <animate attributeName="opacity" values="1;0.72;1" dur={low ? '0.5s' : '1.2s'} repeatCount="indefinite" />
+      </circle>
     </svg>
   );
 }

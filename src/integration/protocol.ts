@@ -86,7 +86,7 @@ export interface InitPayload {
     autoStart?: boolean;
     /** Show "/total" next to the round number in the HUD. Default true. */
     showRoundTotal?: boolean;
-    /** A coloured ring on the watch shows the share of the time left (green, orange, red). Default false. */
+    /** A shining gold ring on the watch shows the share of the time left (red below 15 %). Default false. */
     timeRing?: boolean;
   };
   // Forward-compat slot — preserved and echoed back on GAME_END.

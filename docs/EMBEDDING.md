@@ -119,8 +119,8 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     locale?: string,
     autoStart?: boolean,                  // start round 1 right after INIT, skipping the start screen
     showRoundTotal?: boolean,             // default true; false shows "ROUND 3" instead of "ROUND 3/10"
-    timeRing?: boolean,                   // default false; a ring on the watch shows the share of
-                                          // time left (green, orange below 30 %, red below 15 %)
+    timeRing?: boolean,                   // default false; a shining gold ring on the watch shows the
+                                          // share of time left (red below 15 %)
   },
   extra?: Record<string, unknown>, // forward-compat slot, echoed back on GAME_END
 }
