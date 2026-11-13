@@ -31,6 +31,9 @@ export function DrivingGame() {
   const [playerNickname, setPlayerNickname] = useState<string | undefined>(undefined);
   const [showQuitButton, setShowQuitButton] = useState(false);
   const [showRoundTotal, setShowRoundTotal] = useState(true);
+  const [timeRing, setTimeRing] = useState(false);
+  // The current round's time limit, so the watch makes one full sweep per round.
+  const [totalTime, setTotalTime] = useState(GAME_CONFIG.tripDurationMs / 1000);
 
   const buildSummary = useCallback((data: GameData, endedReason: 'completed' | 'quit'): GameSummary => {
     const accidents = {
@@ -89,6 +92,7 @@ export function DrivingGame() {
     engine.onTimeUpdate = setTimeRemaining;
     engine.onCelebrationChange = setCelebrating;
     engine.onRoundStart = ({ round, scene, deliveryType, applied }) => {
+      setTotalTime((applied?.tripDurationMs ?? GAME_CONFIG.tripDurationMs) / 1000);
       embedHost.sendRoundStart(round, scene, deliveryType, sessionIdRef.current, applied);
     };
     engine.onRoundEnd = (result, data) => {
@@ -131,6 +135,7 @@ export function DrivingGame() {
         // Base values are snapshotted after the INIT overrides; schedule entries go on top.
         engineRef.current?.setSchedule(getInitSchedule(msg.payload), snapshotBaseConditions());
         setShowRoundTotal(msg.payload.ui?.showRoundTotal !== false);
+        setTimeRing(msg.payload.ui?.timeRing === true);
         setPlayerNickname(msg.payload.player?.nickname);
         setShowQuitButton(!!msg.payload.ui?.showQuitButton);
         setMoney(GAME_CONFIG.startingMoney);
@@ -254,6 +259,8 @@ export function DrivingGame() {
             totalRounds={GAME_CONFIG.totalRounds}
             showRoundTotal={showRoundTotal}
             timeRemaining={timeRemaining}
+            totalTime={totalTime}
+            timeRing={timeRing}
           />
           {showQuitButton && (
             <button

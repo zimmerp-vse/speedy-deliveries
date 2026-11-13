@@ -94,6 +94,9 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     acceleration?: number,                // default 18
     braking?: number,                     // default 80
     deliveryDistance?: number,            // road segments per delivery, default 300 (50..2000)
+    safeFinish?: boolean,                 // default false; true: the striped finish zone is shorter
+                                          // (12 % of deliveryDistance, at least 15 segments, instead
+                                          // of 40) and no hazards appear in it
     schedule?: Array<{                    // optional per-round conditions, see below
       tripDurationMs?: number,
       carSpawnRate?: number,
@@ -116,6 +119,8 @@ All messages: `{ source: 'dash-delivery', type, version: 1, payload }`.
     locale?: string,
     autoStart?: boolean,                  // start round 1 right after INIT, skipping the start screen
     showRoundTotal?: boolean,             // default true; false shows "ROUND 3" instead of "ROUND 3/10"
+    timeRing?: boolean,                   // default false; a shining gold ring on the watch shows the
+                                          // share of time left (red below 15 %)
   },
   extra?: Record<string, unknown>, // forward-compat slot, echoed back on GAME_END
 }

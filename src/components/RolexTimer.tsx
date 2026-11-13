@@ -1,10 +1,14 @@
+import { useId } from 'react';
+
 interface RolexTimerProps {
   timeRemaining: number;
   totalTime: number;
   size?: number;
+  /** Draw a ring over the bezel with the share of time left: green, orange below 30 %, red below 15 %. */
+  ring?: boolean;
 }
 
-export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerProps) {
+export function RolexTimer({ timeRemaining, totalTime, size = 200, ring = false }: RolexTimerProps) {
   const seconds = Math.ceil(timeRemaining);
   const isLow = seconds <= 10;
   // Map remaining time to a clock position: full = 12 o'clock, empty = 12 o'clock again (one full sweep)
@@ -249,6 +253,8 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerP
         />
       </div>
 
+      {ring && <TimeRing left={totalTime > 0 ? timeRemaining / totalTime : 0} size={size} />}
+
       {/* Low-time pulse ring */}
       {isLow && (
         <div
@@ -257,5 +263,51 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerP
         />
       )}
     </div>
+  );
+}
+
+/**
+ * The share of time left as a ring on the bezel, starting at 12 o'clock and shrinking
+ * anticlockwise. Bright gold with a glint of sunlight sweeping round it and a pulsing glow, so it
+ * stands out against the dark part of the bezel; red when less than 15 % is left.
+ */
+function TimeRing({ left, size }: { left: number; size: number }) {
+  const id = useId().replace(/:/g, '');
+  const share = Math.max(0, Math.min(1, left));
+  const width = Math.max(4, size * 0.07);
+  const c = size / 2;
+  const r = c - width / 2;
+  const circumference = 2 * Math.PI * r;
+  const low = share < 0.15;
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full" aria-hidden>
+      <defs>
+        {/* A bright band in a gold gradient; turning the gradient sweeps the glint round the ring. */}
+        <linearGradient id={`gold${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={size} y2={size}>
+          <stop offset="0" stopColor="#a8740a" />
+          <stop offset="0.38" stopColor="#f5c518" />
+          <stop offset="0.5" stopColor="#fffbe8" />
+          <stop offset="0.62" stopColor="#f5c518" />
+          <stop offset="1" stopColor="#a8740a" />
+          <animateTransform attributeName="gradientTransform" type="rotate"
+            from={`0 ${c} ${c}`} to={`360 ${c} ${c}`} dur="2.4s" repeatCount="indefinite" />
+        </linearGradient>
+      </defs>
+      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={width} />
+      <circle
+        cx={c}
+        cy={c}
+        r={r}
+        fill="none"
+        stroke={low ? '#ef4444' : `url(#gold${id})`}
+        strokeWidth={width}
+        strokeLinecap="butt"
+        strokeDasharray={`${share * circumference} ${circumference}`}
+        transform={`rotate(-90 ${c} ${c})`}
+        style={{ filter: `drop-shadow(0 0 ${width * 0.8}px ${low ? '#ef4444' : '#ffd54a'})` }}
+      >
+        <animate attributeName="opacity" values="1;0.72;1" dur={low ? '0.5s' : '1.2s'} repeatCount="indefinite" />
+      </circle>
+    </svg>
   );
 }

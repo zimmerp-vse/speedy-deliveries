@@ -36,6 +36,7 @@ export const GAME_CONFIG = {
   // Delivery distance (in segments)
   deliveryDistance: 300,
   destinationVisibleDistance: 40, // how many segments before finish the destination appears
+  safeFinish: false, // INIT difficulty.safeFinish: shorter finish zone without hazards
   
   // Delivery types (extensible)
   deliveryTypes: [
