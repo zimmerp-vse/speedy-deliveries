@@ -84,6 +84,8 @@ export function spawnObstacles(segments: RoadSegment[], playerSegIdx: number) {
   if (spawnStart >= spawnEnd) return;
 
   const spawnIdx = spawnStart + Math.floor(Math.random() * (spawnEnd - spawnStart + 1));
+  // Safe finish: nothing appears in the striped finish zone (segment index = distance in a round).
+  if (cfg.safeFinish && spawnIdx >= cfg.deliveryDistance - cfg.destinationVisibleDistance) return;
   const seg = segments[spawnIdx];
   if (seg.sprite) return;
 

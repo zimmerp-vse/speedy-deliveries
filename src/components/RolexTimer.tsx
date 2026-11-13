@@ -2,9 +2,11 @@ interface RolexTimerProps {
   timeRemaining: number;
   totalTime: number;
   size?: number;
+  /** Draw a ring over the bezel with the share of time left: green, orange below 30 %, red below 15 %. */
+  ring?: boolean;
 }
 
-export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerProps) {
+export function RolexTimer({ timeRemaining, totalTime, size = 200, ring = false }: RolexTimerProps) {
   const seconds = Math.ceil(timeRemaining);
   const isLow = seconds <= 10;
   // Map remaining time to a clock position: full = 12 o'clock, empty = 12 o'clock again (one full sweep)
@@ -249,6 +251,8 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerP
         />
       </div>
 
+      {ring && <TimeRing left={totalTime > 0 ? timeRemaining / totalTime : 0} size={size} />}
+
       {/* Low-time pulse ring */}
       {isLow && (
         <div
@@ -257,5 +261,31 @@ export function RolexTimer({ timeRemaining, totalTime, size = 200 }: RolexTimerP
         />
       )}
     </div>
+  );
+}
+
+/** The share of time left as a ring on the bezel, starting at 12 o'clock and shrinking anticlockwise. */
+function TimeRing({ left, size }: { left: number; size: number }) {
+  const share = Math.max(0, Math.min(1, left));
+  const width = Math.max(4, size * 0.07);
+  const r = size / 2 - width / 2;
+  const circumference = 2 * Math.PI * r;
+  const color = share < 0.15 ? '#ef4444' : share < 0.3 ? '#f59e0b' : '#22c55e';
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full" aria-hidden>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={width} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={width}
+        strokeLinecap="butt"
+        strokeDasharray={`${share * circumference} ${circumference}`}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ filter: `drop-shadow(0 0 ${width / 2}px ${color})` }}
+      />
+    </svg>
   );
 }

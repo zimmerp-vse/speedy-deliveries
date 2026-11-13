@@ -12,7 +12,10 @@ interface GameHUDProps {
   /** Show "/total" next to the round number. Default true. */
   showRoundTotal?: boolean;
   timeRemaining: number;
+  /** The round's time limit in seconds, so the watch makes one sweep per round. */
   totalTime?: number;
+  /** Coloured ring with the share of time left. */
+  timeRing?: boolean;
 }
 
 // Luxury plaque shared by CASH and ROUND — black lacquer + gold trim
@@ -79,6 +82,7 @@ export function GameHUD({
   showRoundTotal = true,
   timeRemaining,
   totalTime = 45,
+  timeRing = false,
 }: GameHUDProps) {
   // Responsive: smaller Rolex on mobile, and reposition so it doesn't cover the road
   const [isMobile, setIsMobile] = useState(false);
@@ -129,6 +133,7 @@ export function GameHUD({
             <RolexTimer
               timeRemaining={timeRemaining}
               totalTime={totalTime}
+              ring={timeRing}
               size={rolexSize}
             />
           )}
@@ -141,6 +146,7 @@ export function GameHUD({
           <RolexTimer
             timeRemaining={timeRemaining}
             totalTime={totalTime}
+            ring={timeRing}
             size={rolexSize}
           />
         </div>

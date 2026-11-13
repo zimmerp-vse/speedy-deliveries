@@ -64,6 +64,12 @@ export interface InitPayload {
      * the schedule's length; rounds beyond the schedule use the base values.
      */
     schedule?: ScheduleEntry[];
+    /**
+     * Safe finish: the striped finish zone is shorter (12 % of deliveryDistance, at least 15
+     * segments, instead of 40 segments) and no hazards appear in it, so the end of a delivery is
+     * a free sprint. Default false.
+     */
+    safeFinish?: boolean;
   };
   economy?: {
     startingMoney?: number;
@@ -80,6 +86,8 @@ export interface InitPayload {
     autoStart?: boolean;
     /** Show "/total" next to the round number in the HUD. Default true. */
     showRoundTotal?: boolean;
+    /** A coloured ring on the watch shows the share of the time left (green, orange, red). Default false. */
+    timeRing?: boolean;
   };
   // Forward-compat slot — preserved and echoed back on GAME_END.
   extra?: Record<string, unknown>;
