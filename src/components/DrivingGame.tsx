@@ -7,6 +7,7 @@ import { RoundEndScreen } from './RoundEndScreen';
 import { GameOverScreen } from './GameOverScreen';
 import { StartScreen } from './StartScreen';
 import { embedHost } from '@/integration/host';
+import { installAudioUnlock } from '@/game/sounds';
 import { applyInitConfig, getInitSchedule, snapshotBaseConditions } from '@/integration/applyConfig';
 import type { InitPayload, RoundEvent, GameSummary } from '@/integration/protocol';
 
@@ -55,6 +56,9 @@ export function DrivingGame() {
       extra: initRef.current?.extra,
     };
   }, []);
+
+  // Sound starts with the player's first tap, click or key press in the game (browser rule).
+  useEffect(() => installAudioUnlock(), []);
 
   useEffect(() => {
     const canvas = canvasRef.current;

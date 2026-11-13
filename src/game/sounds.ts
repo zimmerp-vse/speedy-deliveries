@@ -31,6 +31,11 @@ class SoundManager {
 
   ensureContext() {
     if (this.ctx) return;
+    // iPhone: without this the ring/silent switch mutes Web Audio (Safari 16.4+).
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession) {
+      try { nav.audioSession.type = 'playback'; } catch { /* not supported */ }
+    }
     const Ctor: typeof AudioContext =
       (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ??
       window.AudioContext;
@@ -40,6 +45,26 @@ class SoundManager {
     this.master.gain.value = this.muted ? 0 : 0.7;
     this.master.connect(this.ctx.destination);
   }
+
+  /**
+   * Browsers keep audio paused until the page gets a tap, click or key press, and audio made
+   * before that stays paused until resume() is called. So: on every such gesture, until audio
+   * runs, resume it (and on iPhone play a silent sound inside the gesture, which unlocks it).
+   */
+  unlock() {
+    this.ensureContext();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (ctx.state !== 'running') ctx.resume().catch(() => { /* retried on the next gesture */ });
+    try {
+      const src = ctx.createBufferSource();
+      src.buffer = ctx.createBuffer(1, 1, 22050);
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch { /* ignore */ }
+  }
+
+  isRunning() { return this.ctx?.state === 'running'; }
 
   setMuted(m: boolean) {
     this.muted = m;
@@ -95,6 +120,7 @@ class SoundManager {
   }
 
   startEngine() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => { /* needs a gesture */ });
     if (!this.ctx || !this.master || this.engineRunning) return;
     const ctx = this.ctx;
     if (!this.engineBuffer) this.engineBuffer = this.buildEnginePulseBuffer();
@@ -666,3 +692,25 @@ class SoundManager {
 }
 
 export const sounds = new SoundManager();
+
+/**
+ * Listens for the gestures that let a page play sound and unlocks audio with the first one;
+ * keeps listening while audio is not running (for example after the phone was locked).
+ * touchend and pointerup count on phones (touchstart does not); keydown and mousedown on computers.
+ * Returns a function that removes the listeners.
+ */
+export function installAudioUnlock(): () => void {
+  const events = ['touchend', 'pointerup', 'mousedown', 'keydown', 'click'] as const;
+  const onGesture = () => {
+    if (!sounds.isRunning()) sounds.unlock();
+  };
+  const onVisible = () => {
+    if (document.visibilityState === 'visible' && !sounds.isRunning()) sounds.unlock();
+  };
+  for (const e of events) window.addEventListener(e, onGesture, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', onVisible);
+  return () => {
+    for (const e of events) window.removeEventListener(e, onGesture, { capture: true });
+    document.removeEventListener('visibilitychange', onVisible);
+  };
+}
