@@ -73,8 +73,9 @@ export function applyInitConfig(init: InitPayload | undefined): ResolvedConfig {
     GAME_CONFIG.deliveryDistance = Math.round(num(d.deliveryDistance, GAME_CONFIG.deliveryDistance, 50, 2000));
   }
   GAME_CONFIG.safeFinish = d.safeFinish === true;
+  // Safe finish: the last fifth of the road is a free sprint (40 segments at the default length).
   GAME_CONFIG.destinationVisibleDistance = GAME_CONFIG.safeFinish
-    ? Math.max(15, Math.round(GAME_CONFIG.deliveryDistance * 0.12))
+    ? Math.max(20, Math.round(GAME_CONFIG.deliveryDistance * 0.20))
     : 40;
 
   if (typeof e.startingMoney === 'number') GAME_CONFIG.startingMoney = num(e.startingMoney, GAME_CONFIG.startingMoney, 0);

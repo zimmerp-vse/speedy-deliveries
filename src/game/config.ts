@@ -37,6 +37,19 @@ export const GAME_CONFIG = {
   deliveryDistance: 300,
   destinationVisibleDistance: 40, // how many segments before finish the destination appears
   safeFinish: false, // INIT difficulty.safeFinish: shorter finish zone without hazards
+
+  // Collision half-widths, in road units (the road is 4.2 wide from the middle to the edge, and
+  // the three lanes sit at -2.436, 0 and +2.436). A crash needs the player's box and the
+  // hazard's box to overlap, so what counts is the sum of the two half-widths. Kept clearly
+  // narrower than the drawn sprites: a near miss should be a miss.
+  hitbox: {
+    player: 0.40,
+    carBig: 0.52,      // lorry, tractor
+    carMedium: 0.45,   // van, SUV
+    car: 0.38,         // everything else on four wheels
+    obstacle: 0.30,
+    pedestrian: 0.19,
+  },
   
   // Delivery types (extensible)
   deliveryTypes: [
