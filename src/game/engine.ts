@@ -567,18 +567,19 @@ export class GameEngine {
 
       const obstacleX = seg.sprite.offset * 4.2;
       const lateralDist = Math.abs(s.playerX - obstacleX);
-      // Per-type collision half-widths (sum of player + obstacle half-widths in world units)
-      const playerHalfW = 0.55;
-      let obsHalfW = 0.4;
+      // Collision half-widths (GAME_CONFIG.hitbox): a crash needs the two boxes to overlap.
+      const hb = GAME_CONFIG.hitbox;
+      const playerHalfW = hb.player;
+      let obsHalfW = hb.obstacle;
       if (seg.sprite.type === 'car') {
         const e = seg.sprite.emoji ?? '';
-        if (e === '🚛' || e === '🚜') obsHalfW = 0.7;        // big trucks
-        else if (e === '🚚' || e === '🚙') obsHalfW = 0.6;   // truck / hummer
-        else obsHalfW = 0.5;                                 // sedan/sports/police/taxi/van
+        if (e === '🚛' || e === '🚜') obsHalfW = hb.carBig;
+        else if (e === '🚚' || e === '🚙') obsHalfW = hb.carMedium;
+        else obsHalfW = hb.car;
       } else if (seg.sprite.type === 'obstacle') {
-        obsHalfW = 0.4;
+        obsHalfW = hb.obstacle;
       } else {
-        obsHalfW = 0.25; // pedestrians
+        obsHalfW = hb.pedestrian;
       }
       if (lateralDist > playerHalfW + obsHalfW) continue;
 
