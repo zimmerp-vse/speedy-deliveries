@@ -110,6 +110,8 @@ export interface RoundEvent {
   moneyLost: number;
   moneyBalance: number;
   applied?: AppliedConditions;
+  /** How the round ran on the player's machine: average frames per second and drawing quality (0 full, 1 lighter, 2 lightest). */
+  perf?: { fps: number | null; quality: 0 | 1 | 2 };
 }
 
 export interface GameSummary {

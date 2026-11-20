@@ -153,11 +153,16 @@ with or without a schedule. When `INIT` carried a schedule, `INIT_ACK.appliedCon
 | `READY`        | `{ protocolVersion }`                                                   |
 | `INIT_ACK`     | `{ appliedConfig, sessionId }`                                          |
 | `ROUND_START`  | `{ sessionId, round, scene, deliveryType, startedAt, applied }`         |
-| `ROUND_END`    | `{ sessionId, round, outcome, timeMs, scene, moneyEarned, moneyLost, moneyBalance, applied }` |
+| `ROUND_END`    | `{ sessionId, round, outcome, timeMs, scene, moneyEarned, moneyLost, moneyBalance, applied, perf }` |
 | `GAME_END`     | `GameSummary` (see below)                                               |
 | `ERROR`        | `{ code, message }`                                                     |
 
 `applied` is `{ tripDurationMs, carSpawnRate, obstacleSpawnRate, pedestrianSpawnRate, sceneIndex }`.
+
+`perf` is `{ fps, quality }`: the average frames drawn per second while the round was in play
+(`null` for a round shorter than a second) and the drawing quality at its end (0 full, 1 lighter,
+2 lightest; the game lowers it by itself on a machine that cannot keep up). `timeMs` is simulated
+time: on a slow machine a round lasts longer on the clock than `timeMs` says.
 `startedAt` is the player's clock (`Date.now()`); a host that needs reliable timing should use
 its own server time.
 
