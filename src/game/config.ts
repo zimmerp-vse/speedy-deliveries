@@ -98,7 +98,7 @@ export const GAME_CONFIG = {
       rightBands: [['#3a3a3a','#333333',1.5], ['#2a2a2a','#252525',2.5], ['#222222','#1e1e1e',4], ['#1a1a1a','#151515',7]],
       scenery: ['🏢', '🏬', '🏪', '🏗️', '🚏'],
       leftScenery: ['🏢', '🏬', '🏠', '🏗️', '🏪'],
-      rightScenery: ['🏨', '🏢', '🏘️', '🏬', '🚏'],
+      rightScenery: ['🏨', '🏢', '🏘️', '🏬', '🏦'],  // no bus stop here: it is a road obstacle
       horizon: ['🏙️', '🌃', '🏢'],
       midground: ['🏠', '🏘️', '🏗️', '🏬', '🏪', '🏢', '🏨'] },
     { name: 'Desert Highway', skyTop: '#ff8c42', skyBottom: '#ffd700',
@@ -118,7 +118,7 @@ export const GAME_CONFIG = {
       rightBands: [['#2d5016','#24440f',1.5], ['#3a6020','#2d5016',2.5], ['#2a4510','#224008',4], ['#1e3808','#183005',7]],
       scenery: ['🏘️', '🌳', '🏠', '🚏', '⛪'],
       leftScenery: ['🏠', '🏡', '🌳', '🏘️', '⛪'],
-      rightScenery: ['🏠', '🌳', '🏡', '🚏', '🏘️'],
+      rightScenery: ['🏠', '🌳', '🏡', '🌲', '🏘️'],  // no bus stop here: it is a road obstacle
       horizon: ['🏘️', '⛪', '🏭'],
       midground: ['🏠', '🏡', '🌳', '🏠', '🌲', '🏘️'] },
     { name: 'Coastal Road', skyTop: '#0ea5e9', skyBottom: '#7dd3fc',
