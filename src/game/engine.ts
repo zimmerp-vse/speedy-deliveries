@@ -16,6 +16,15 @@ export interface RichRoundResult extends RoundResult {
   outcome: RoundOutcomeKind;
   /** Conditions in force for this round. */
   applied: AppliedConditions;
+  /** How the round ran on this machine. */
+  perf: RoundPerf;
+}
+
+export interface RoundPerf {
+  /** Frames drawn per second of play, on average; null if the round was too short to tell. */
+  fps: number | null;
+  /** Drawing quality at the end of the round: 0 full, 1 lighter, 2 lightest. */
+  quality: 0 | 1 | 2;
 }
 
 export type GameEndReason = 'completed' | 'quit';
@@ -50,6 +59,9 @@ export class GameEngine {
   // Seconds of simulated play in this round. The countdown and the reported round time run
   // on it, not on the wall clock, so a machine that cannot keep up does not lose time.
   private roundSimTime: number = 0;
+  // Frames drawn and wall-clock seconds while the round was in play, for the reported frame rate.
+  private roundFrames: number = 0;
+  private roundWallTime: number = 0;
   private lastTickSecond: number = -1;
   private lastHornState: boolean = false;
   private lastScreechState: boolean = false;
@@ -176,6 +188,8 @@ export class GameEngine {
     this.state = this.createInitialState(this.currentApplied.sceneIndex);
     this.onCelebrationChange?.(false);
     this.roundSimTime = 0;
+    this.roundFrames = 0;
+    this.roundWallTime = 0;
     this.applyQualityToState();
     this.cruiseEnabled = false;
     this.lastSpawnSegment = -1;
@@ -241,6 +255,11 @@ export class GameEngine {
     this.lastTime = now;
 
     // FPS sampling for perf guard (rolling ~120 frames)
+    if (!this.state.isAccident && !this.state.celebrating) {
+      this.roundFrames++;
+      this.roundWallTime += Math.min(frameTime, 0.25);
+    }
+
     // One long frame (a tab switch, a hiccup) must not count as a slow machine.
     this.fpsSamples.push(Math.min(frameTime, 0.1));
     if (this.fpsSamples.length > 120) this.fpsSamples.shift();
@@ -698,6 +717,10 @@ export class GameEngine {
       round: this.currentRound, success, accidentType,
       moneyEarned, moneyLost, scene: this.state.scene.name, timeMs,
       outcome, applied: { ...this.currentApplied },
+      perf: {
+        fps: this.roundWallTime >= 1 ? Math.round((this.roundFrames / this.roundWallTime) * 10) / 10 : null,
+        quality: this.quality,
+      },
     };
     this.gameData.rounds.push(result);
 

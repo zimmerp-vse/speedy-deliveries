@@ -117,6 +117,7 @@ export function DrivingGame() {
         moneyLost: result.moneyLost,
         moneyBalance: data.totalMoney,
         applied: result.applied,
+        perf: result.perf,
       };
       roundsRef.current.push(event);
       embedHost.sendRoundEnd(event, sessionIdRef.current);
