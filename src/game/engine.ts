@@ -600,9 +600,14 @@ export class GameEngine {
     const s = this.state;
     if (s.isAccident || s.isDelivery || s.speed <= 10) return;
 
-    // Check current and next few segments to prevent skipping at high speed
-    const checkRange = Math.max(2, Math.ceil(s.speed * 0.016 * 0.22) + 1);
-    for (let offset = 0; offset <= checkRange; offset++) {
+    // Only a hazard that is drawn at the car can be hit: the one in the NEXT segment (the renderer
+    // puts it on the bottom row, where the car is). A hazard two segments ahead is still drawn
+    // 30 % of the screen height above the car, and in a side lane well to the side of it, so a
+    // crash there looked like no collision at all; a hazard in the car's own segment is behind
+    // the car and not drawn. One simulation step moves the car less than one segment at any
+    // normal speed, so no hazard can skip the next segment; `reach` covers a faster car.
+    const reach = Math.max(1, Math.ceil(s.speed * this.fixedStep * 0.22));
+    for (let offset = 1; offset <= reach; offset++) {
       const idx = (playerSegIdx + offset) % s.segments.length;
       const seg = s.segments[idx];
       if (!seg.sprite || !seg.sprite.active) continue;
