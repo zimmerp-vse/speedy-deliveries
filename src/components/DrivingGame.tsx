@@ -68,8 +68,10 @@ export function DrivingGame() {
     // directly: inside an iframe (notably Safari) the first measurement can come before
     // layout, and a later size change does not always fire a window 'resize'.
     let applied = '';
+    // Lowered by the engine when the machine cannot keep up: fewer pixels to fill.
+    let maxDpr = 1.5;
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
       const w = Math.floor(canvas.clientWidth * dpr);
       const h = Math.floor(canvas.clientHeight * dpr);
       if (w === 0 || h === 0 || applied === `${w}x${h}x${dpr}`) return;
@@ -95,6 +97,7 @@ export function DrivingGame() {
     engine.onMoneyUpdate = setMoney;
     engine.onTimeUpdate = setTimeRemaining;
     engine.onCelebrationChange = setCelebrating;
+    engine.onQualityChange = (level) => { maxDpr = level === 1 ? 1 : 0.6; resize(); };
     engine.onRoundStart = ({ round, scene, deliveryType, applied }) => {
       setTotalTime((applied?.tripDurationMs ?? GAME_CONFIG.tripDurationMs) / 1000);
       embedHost.sendRoundStart(round, scene, deliveryType, sessionIdRef.current, applied);

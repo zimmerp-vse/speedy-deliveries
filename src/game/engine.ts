@@ -44,7 +44,12 @@ export class GameEngine {
   private accumulator: number = 0;
   private readonly fixedStep: number = 1 / 60;
   private fpsSamples: number[] = [];
-  private perfDegraded: boolean = false;
+  // 0 = full detail; 1 = no glows, shorter view, canvas at 1 device pixel; 2 = also a coarser canvas
+  private quality: 0 | 1 | 2 = 0;
+  private lastHudAt: number = 0;
+  // Seconds of simulated play in this round. The countdown and the reported round time run
+  // on it, not on the wall clock, so a machine that cannot keep up does not lose time.
+  private roundSimTime: number = 0;
   private lastTickSecond: number = -1;
   private lastHornState: boolean = false;
   private lastScreechState: boolean = false;
@@ -52,7 +57,6 @@ export class GameEngine {
   
   private currentRound: number = 0;
   private gameData: GameData;
-  private roundStartTime: number = 0;
   
   public onRoundEnd?: (result: RichRoundResult, gameData: GameData) => void;
   public onGameEnd?: (gameData: GameData, reason: GameEndReason) => void;
@@ -60,6 +64,8 @@ export class GameEngine {
   public onMoneyUpdate?: (money: number) => void;
   public onTimeUpdate?: (time: number) => void;
   public onCelebrationChange?: (active: boolean) => void;
+  /** The engine lowered its drawing quality; the host should resize the canvas for `level`. */
+  public onQualityChange?: (level: 1 | 2) => void;
   public onRoundStart?: (info: { round: number; scene: string; deliveryType: string; applied: AppliedConditions }) => void;
 
   // Optional per-round schedule (set from INIT). Without it the game behaves as it always did.
@@ -169,7 +175,8 @@ export class GameEngine {
     }
     this.state = this.createInitialState(this.currentApplied.sceneIndex);
     this.onCelebrationChange?.(false);
-    this.roundStartTime = performance.now();
+    this.roundSimTime = 0;
+    this.applyQualityToState();
     this.cruiseEnabled = false;
     this.lastSpawnSegment = -1;
     this.running = true;
@@ -234,14 +241,13 @@ export class GameEngine {
     this.lastTime = now;
 
     // FPS sampling for perf guard (rolling ~120 frames)
-    this.fpsSamples.push(frameTime);
+    // One long frame (a tab switch, a hiccup) must not count as a slow machine.
+    this.fpsSamples.push(Math.min(frameTime, 0.1));
     if (this.fpsSamples.length > 120) this.fpsSamples.shift();
-    if (!this.perfDegraded && this.fpsSamples.length >= 60) {
+    // 20 frames are enough to judge: at 5 frames a second, 60 would take half a round.
+    if (this.quality < 2 && this.fpsSamples.length >= 20) {
       const avg = this.fpsSamples.reduce((a, b) => a + b, 0) / this.fpsSamples.length;
-      if (avg > 0.028) {
-        this.perfDegraded = true;
-        (this.state as any).__drawDistOverride = 60;
-      }
+      if (avg > (this.quality === 0 ? 0.028 : 0.045)) this.lowerQuality();
     }
 
     // Cap accumulator so a tab-switch doesn't trigger a huge catch-up
@@ -259,6 +265,31 @@ export class GameEngine {
     this.renderFrame();
     this.animFrame = requestAnimationFrame(this.loop);
   };
+
+  private lowerQuality() {
+    this.quality = (this.quality + 1) as 1 | 2;
+    this.fpsSamples = [];
+    // Glows (shadowBlur) are the most expensive thing to draw without graphics acceleration.
+    // Shadowing the property on this context turns every one of them off at once.
+    Object.defineProperty(this.ctx, 'shadowBlur', { get: () => 0, set: () => {}, configurable: true });
+    this.applyQualityToState();
+    this.onQualityChange?.(this.quality as 1 | 2);
+  }
+
+  private applyQualityToState() {
+    if (this.quality > 0) (this.state as any).__drawDistOverride = this.quality === 1 ? 60 : 45;
+  }
+
+  // The dashboard (React) is told about speed, money and time about 15 times a second,
+  // not at every simulation step; `force` is for moments that must show at once.
+  private emitHud(speed: number, force = false) {
+    const now = performance.now();
+    if (!force && now - this.lastHudAt < 66) return;
+    this.lastHudAt = now;
+    this.onSpeedUpdate?.(speed);
+    this.onMoneyUpdate?.(this.gameData.totalMoney);
+    this.onTimeUpdate?.(this.state.timeRemaining);
+  }
 
   private update(dt: number) {
     const cfg = GAME_CONFIG;
@@ -287,9 +318,7 @@ export class GameEngine {
           color: Math.random() < 0.3 ? '#333' : '#888',
         });
       }
-      this.onSpeedUpdate?.(0);
-      this.onMoneyUpdate?.(this.gameData.totalMoney);
-      this.onTimeUpdate?.(s.timeRemaining);
+      this.emitHud(0);
       return;
     }
     
@@ -306,9 +335,7 @@ export class GameEngine {
         this.finishCelebration();
         return;
       }
-      this.onSpeedUpdate?.(s.speed);
-      this.onMoneyUpdate?.(this.gameData.totalMoney);
-      this.onTimeUpdate?.(s.timeRemaining);
+      this.emitHud(s.speed);
       return;
     }
     
@@ -368,8 +395,8 @@ export class GameEngine {
     
     s.hornActive = this.controls.horn;
     
-    const elapsed = (performance.now() - this.roundStartTime) / 1000;
-    s.timeRemaining = Math.max(0, GAME_CONFIG.tripDurationMs / 1000 - elapsed);
+    this.roundSimTime += dt;
+    s.timeRemaining = Math.max(0, GAME_CONFIG.tripDurationMs / 1000 - this.roundSimTime);
     
     if (s.timeRemaining <= 0 && !s.isDelivery && !s.isAccident) {
       s.isAccident = true;
@@ -396,9 +423,7 @@ export class GameEngine {
       this.spawnCelebrationParticles();
       this.onCelebrationChange?.(true);
       this.endRound(true);
-      this.onSpeedUpdate?.(s.speed);
-      this.onMoneyUpdate?.(this.gameData.totalMoney);
-      this.onTimeUpdate?.(s.timeRemaining);
+      this.emitHud(s.speed, true);
       return;
     }
 
@@ -434,9 +459,7 @@ export class GameEngine {
       this.lastTickSecond = sec;
     }
 
-    this.onSpeedUpdate?.(s.speed);
-    this.onMoneyUpdate?.(this.gameData.totalMoney);
-    this.onTimeUpdate?.(s.timeRemaining);
+    this.emitHud(s.speed);
   }
 
   private updateMalfunction(dt: number) {
@@ -647,7 +670,7 @@ export class GameEngine {
   }
 
   private endRound(success: boolean, accidentType?: AccidentType) {
-    const timeMs = performance.now() - this.roundStartTime;
+    const timeMs = Math.round(this.roundSimTime * 1000);
     
     let moneyEarned = 0, moneyLost = 0;
     

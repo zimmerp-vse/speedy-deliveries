@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from './config';
+import { drawEmoji } from './emojiSprites';
 
 export interface CelebrationParticle {
   x: number;
@@ -154,13 +155,10 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       const size = layer === 0 ? 28 : 20;
       const yOff = layer === 0 ? 0 : -4;
       ctx.globalAlpha = layer === 0 ? 0.5 : 0.35;
-      ctx.font = `${size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
       for (let i = -1; i < 7; i++) {
         const baseX = i * spacing - (layerOffset % spacing);
         const emoji = horizonEmojis[Math.abs(i + layer * 3 + 50) % horizonEmojis.length];
-        ctx.fillText(emoji, baseX, horizonY + yOff);
+        drawEmoji(ctx, emoji, baseX, horizonY + yOff, size);
       }
     }
     ctx.globalAlpha = 1;
@@ -177,14 +175,11 @@ export function render(ctx: CanvasRenderingContext2D, state: GameState, W: numbe
       const scrollSpeed = 0.25 + depth * 0.15;
       const layerOffset = (parallaxOffset * scrollSpeed) % mgSpacing;
       ctx.globalAlpha = 0.45 + depth * 0.15;
-      ctx.font = `${size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
       for (let i = -1; i < 8; i++) {
         const baseX = i * mgSpacing - layerOffset + (depth % 2) * mgSpacing * 0.5;
         if (baseX < W * 0.28 || baseX > W * 0.72) {
           const emoji = mgEmojis[Math.abs(i + depth * 5 + 30) % mgEmojis.length];
-          ctx.fillText(emoji, baseX, mgY);
+          drawEmoji(ctx, emoji, baseX, mgY, size);
         }
       }
     }
@@ -460,10 +455,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const emoji = leftEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
             const fontSize = Math.max(6, Math.min(180 * wScale, 70 * baseScale * sizeHint * wScale));
-            ctx.font = `${fontSize}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(emoji, leftX, sceneryY + jitterY);
+            drawEmoji(ctx, emoji, leftX, sceneryY + jitterY, fontSize);
           }
         }
 
@@ -476,10 +468,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
             const emoji = rightEmojis[eidx];
             const sizeHint = getEmojiSizeHint(emoji);
             const fontSize = Math.max(6, Math.min(180 * wScale, 70 * baseScale * sizeHint * wScale));
-            ctx.font = `${fontSize}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(emoji, rightX, sceneryY + jitterY);
+            drawEmoji(ctx, emoji, rightX, sceneryY + jitterY, fontSize);
           }
         }
       }
@@ -503,16 +492,12 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
 
       // Destination emoji
       const fontSize = Math.max(20, Math.min(100, 65 * scale));
-      ctx.font = `${fontSize}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(state.deliveryType.emoji, destX, destY);
+      drawEmoji(ctx, state.deliveryType.emoji, destX, destY, fontSize);
 
       // Flags on road edges
       const flagSize = Math.max(12, Math.min(50, 30 * scale));
-      ctx.font = `${flagSize}px serif`;
-      ctx.fillText('🚩', destX - prev.screenW * 0.9, destY);
-      ctx.fillText('🚩', destX + prev.screenW * 0.9, destY);
+      drawEmoji(ctx, '🚩', destX - prev.screenW * 0.9, destY, flagSize);
+      drawEmoji(ctx, '🚩', destX + prev.screenW * 0.9, destY, flagSize);
 
       // Waving person next to destination
       drawWavingPerson(ctx, destX + fontSize * 0.7, destY, scale, state.gameTime, state.deliveryType);
@@ -542,10 +527,7 @@ function drawCrashScene(ctx: CanvasRenderingContext2D, state: GameState, W: numb
         const isPed = seg.sprite.type === 'pedestrian';
         const cappedScale = Math.min(spriteScale, isPed ? 1.1 : 1.4);
         const fSize = Math.max(14, Math.min(isPed ? 64 : 80, 60 * cappedScale));
-        ctx.font = `${fSize}px serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(seg.sprite.emoji, spriteX, spriteY);
+        drawEmoji(ctx, seg.sprite.emoji, spriteX, spriteY, fSize);
       }
     }
   }
@@ -626,15 +608,11 @@ function drawWavingPerson(
   const fontSize = Math.max(14, Math.min(60, 40 * scale));
 
   // Person
-  ctx.font = `${fontSize}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(deliveryType.waver, x, y);
+  drawEmoji(ctx, deliveryType.waver, x, y, fontSize);
 
   // Waving hand above person
   const handSize = fontSize * 0.6;
-  ctx.font = `${handSize}px serif`;
-  ctx.fillText(deliveryType.waverEmoji, x + waveOffset, y - fontSize * 0.8);
+  drawEmoji(ctx, deliveryType.waverEmoji, x + waveOffset, y - fontSize * 0.8, handSize);
 }
 
 function drawCelebrationEffects(ctx: CanvasRenderingContext2D, state: GameState, W: number, H: number) {
@@ -648,10 +626,7 @@ function drawCelebrationEffects(ctx: CanvasRenderingContext2D, state: GameState,
   for (const p of state.celebrationParticles) {
     if (p.alpha <= 0) continue;
     ctx.globalAlpha = p.alpha;
-    ctx.font = '24px serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(p.emoji, p.x, p.y);
+    drawEmoji(ctx, p.emoji, p.x, p.y, 24, 'middle');
   }
   ctx.globalAlpha = 1;
 
